@@ -37,6 +37,7 @@ const router = createRouter({
       path: '/admin',
       name: 'admin',
       component: () => import('@/pages/AdminPage.vue'),
+      meta: { requiresHost: true },
     },
   ],
   scrollBehavior() {
@@ -45,10 +46,14 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  const { players, inRoom, canEditBank, room } = usePlayState()
+
+  if (to.meta.requiresHost && !canEditBank.value)
+    return { name: 'lobby' }
+
   if (!to.meta.requiresPlayers)
     return true
 
-  const { players, inRoom, room } = usePlayState()
   if (inRoom.value || room.lastCode.value || room.connecting.value)
     return true
   if (players.value.length === 0)

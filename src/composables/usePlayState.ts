@@ -11,6 +11,17 @@ export function usePlayState() {
 
   const inRoom = computed(() => Boolean(room.snapshot.value))
   const isHost = computed(() => !inRoom.value || room.isHost.value)
+  const canEditBank = computed(() => {
+    if (inRoom.value)
+      return room.isHost.value
+    if (room.hosting.value)
+      return true
+    if (room.lastCode.value)
+      return false
+    return true
+  })
+  const meId = computed(() => room.playerId.value)
+  const me = computed(() => room.me.value)
 
   const players = computed(() =>
     inRoom.value
@@ -103,6 +114,9 @@ export function usePlayState() {
     room,
     inRoom,
     isHost,
+    canEditBank,
+    meId,
+    me,
     players,
     scores,
     answeredQuestionIds,

@@ -12,6 +12,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -44,6 +45,7 @@ import {
 } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import { usePlayState } from '@/composables/usePlayState'
 import { useQuizBank } from '@/composables/useQuizBank'
 import { createId } from '@/lib/ids'
 import { QUESTION_VALUES, type Question, type QuestionValue } from '@/lib/types'
@@ -58,6 +60,9 @@ const {
   upsertQuestion,
   removeQuestion,
 } = useQuizBank()
+
+const { inRoom, canEditBank } = usePlayState()
+const canEdit = computed(() => canEditBank.value)
 
 const categoryDialogOpen = ref(false)
 const categoryName = ref('')
@@ -101,6 +106,8 @@ function categoryNameById(id: string) {
 }
 
 function openCreateCategory() {
+  if (!canEdit.value)
+    return
   editingCategoryId.value = null
   categoryName.value = ''
   categoryNameError.value = ''
@@ -108,6 +115,8 @@ function openCreateCategory() {
 }
 
 function openEditCategory(id: string, name: string) {
+  if (!canEdit.value)
+    return
   editingCategoryId.value = id
   categoryName.value = name
   categoryNameError.value = ''
@@ -115,6 +124,8 @@ function openEditCategory(id: string, name: string) {
 }
 
 function saveCategory() {
+  if (!canEdit.value)
+    return
   categoryNameError.value = ''
   const name = categoryName.value.trim()
   if (!name) {
@@ -132,7 +143,7 @@ function saveCategory() {
 }
 
 function confirmDeleteCategory() {
-  if (!categoryToDelete.value)
+  if (!canEdit.value || !categoryToDelete.value)
     return
 
   removeCategory(categoryToDelete.value)
@@ -150,6 +161,8 @@ function blankAnswers() {
 }
 
 function openCreateQuestion() {
+  if (!canEdit.value)
+    return
   questionForm.id = undefined
   questionForm.categoryId = categories.value[0]?.id ?? ''
   questionForm.value = '100'
@@ -162,6 +175,8 @@ function openCreateQuestion() {
 }
 
 function openEditQuestion(question: Question) {
+  if (!canEdit.value)
+    return
   questionForm.id = question.id
   questionForm.categoryId = question.categoryId
   questionForm.value = String(question.value)
@@ -196,6 +211,8 @@ function markCorrect(id: string) {
 }
 
 function saveQuestion() {
+  if (!canEdit.value)
+    return
   questionErrors.categoryId = ''
   questionErrors.text = ''
   questionErrors.answers = ''
@@ -238,7 +255,7 @@ function saveQuestion() {
 }
 
 function confirmDeleteQuestion() {
-  if (!questionToDelete.value)
+  if (!canEdit.value || !questionToDelete.value)
     return
 
   removeQuestion(questionToDelete.value)
@@ -257,20 +274,27 @@ function confirmDeleteQuestion() {
       </p>
     </div>
 
-    <Tabs default-value="categories">
-      <TabsList>
+    <Alert v-if="!canEdit">
+      <AlertTitle>Только ведущий</AlertTitle>
+      <AlertDescription>
+        Вопросы в комнате меняет ведущий. Вы видите поле таким, каким его собрал хост.
+      </AlertDescription>
+    </Alert>
+
+    <Tabs default-value="categories" class="gap-4">
+      <TabsList class="w-full sm:w-auto">
         <TabsTrigger value="categories">Категории</TabsTrigger>
         <TabsTrigger value="questions">Вопросы</TabsTrigger>
       </TabsList>
 
       <TabsContent value="categories">
         <Card>
-          <CardHeader class="flex flex-row items-start justify-between gap-3">
+          <CardHeader class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="flex flex-col gap-1">
               <CardTitle>Категории</CardTitle>
               <CardDescription>Порядок колонок на поле можно менять стрелками.</CardDescription>
             </div>
-            <Button @click="openCreateCategory">
+            <Button v-if="canEdit" class="w-full sm:w-auto" @click="openCreateCategory">
               <PlusIcon data-icon="inline-start" />
               Категория
             </Button>
@@ -288,7 +312,7 @@ function confirmDeleteQuestion() {
                 <TableRow>
                   <TableHead>Название</TableHead>
                   <TableHead>Вопросов</TableHead>
-                  <TableHead class="text-right">Действия</TableHead>
+                  <TableHead v-if="canEdit" class="text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -299,7 +323,7 @@ function confirmDeleteQuestion() {
                       {{ questions.filter(question => question.categoryId === category.id).length }}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell v-if="canEdit">
                     <div class="flex justify-end gap-1">
                       <Button variant="ghost" size="icon-sm" @click="moveCategory(category.id, -1)">
                         <ChevronUpIcon />
@@ -328,12 +352,16 @@ function confirmDeleteQuestion() {
 
       <TabsContent value="questions">
         <Card>
-          <CardHeader class="flex flex-row items-start justify-between gap-3">
+          <CardHeader class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div class="flex flex-col gap-1">
               <CardTitle>Вопросы</CardTitle>
-              <CardDescription>Один правильный ответ и несколько ложных. После верного ответа ведущий выберет игрока.</CardDescription>
+              <CardDescription>
+                {{ inRoom
+                  ? 'Один правильный ответ. В комнате поле общее — правки сразу уходят игрокам, пока партия не началась.'
+                  : 'Один правильный ответ и несколько ложных. После верного ответа ведущий выберет игрока.' }}
+              </CardDescription>
             </div>
-            <Button :disabled="!categories.length" @click="openCreateQuestion">
+            <Button v-if="canEdit" class="w-full sm:w-auto" :disabled="!categories.length" @click="openCreateQuestion">
               <PlusIcon data-icon="inline-start" />
               Вопрос
             </Button>
@@ -352,15 +380,15 @@ function confirmDeleteQuestion() {
                   <TableHead>Категория</TableHead>
                   <TableHead>Номинал</TableHead>
                   <TableHead>Вопрос</TableHead>
-                  <TableHead class="text-right">Действия</TableHead>
+                  <TableHead v-if="canEdit" class="text-right">Действия</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow v-for="question in sortedQuestions" :key="question.id">
                   <TableCell>{{ categoryNameById(question.categoryId) }}</TableCell>
                   <TableCell class="font-board text-primary text-lg">{{ question.value }}</TableCell>
-                  <TableCell class="max-w-md truncate">{{ question.text }}</TableCell>
-                  <TableCell>
+                  <TableCell class="max-w-[12rem] truncate sm:max-w-md">{{ question.text }}</TableCell>
+                  <TableCell v-if="canEdit">
                     <div class="flex justify-end gap-1">
                       <Button variant="ghost" size="icon-sm" @click="openEditQuestion(question)">
                         <PencilIcon />
@@ -381,7 +409,7 @@ function confirmDeleteQuestion() {
     </Tabs>
 
     <Dialog v-model:open="categoryDialogOpen">
-      <DialogContent class="sm:max-w-md">
+      <DialogContent class="max-h-[90dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{{ editingCategoryId ? 'Категория' : 'Новая категория' }}</DialogTitle>
           <DialogDescription>Название колонки на игровом поле.</DialogDescription>
@@ -406,7 +434,7 @@ function confirmDeleteQuestion() {
     </Dialog>
 
     <Dialog v-model:open="questionDialogOpen">
-      <DialogContent class="sm:max-w-lg">
+      <DialogContent class="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{{ questionForm.id ? 'Редактировать вопрос' : 'Новый вопрос' }}</DialogTitle>
           <DialogDescription>Один номинал в категории — одна карточка на поле.</DialogDescription>

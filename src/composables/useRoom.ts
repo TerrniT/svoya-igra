@@ -1,15 +1,11 @@
 import { computed, ref } from 'vue'
 import { useSessionStorage } from '@vueuse/core'
-import type { DataConnection, Peer } from 'peerjs'
 import { createId } from '@/lib/ids'
 import {
-  claimHostPeer,
-  createPeer,
-  hostPeerId,
-  parseWireData,
-  sendWire,
-  waitForConnection,
-  waitForPeerOpen,
+  RoomLink,
+  claimHostRoom,
+  openGuestRoom,
+  openHostRoom,
 } from '@/lib/peer-room'
 import { RoomEngine, type HostRoomState, type WireClient } from '@/lib/room-engine'
 import type { ClientMessage, RoomRole, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
@@ -37,8 +33,7 @@ function useRoomBase() {
   const error = ref('')
   const lastNotice = ref<Extract<ServerMessage, { type: 'notice' }> | null>(null)
 
-  let peer: Peer | null = null
-  let guestConnection: DataConnection | null = null
+  let link: RoomLink | null = null
   let engine: RoomEngine | null = null
   let disposed = true
   let session = 0
@@ -90,62 +85,43 @@ function useRoomBase() {
     persistHost(null)
   }
 
-  function teardown() {
+  async function teardown() {
     session += 1
     disposed = true
     engine = null
-    guestConnection?.close()
-    guestConnection = null
-    peer?.destroy()
-    peer = null
+    const previous = link
+    link = null
     linkReady.value = false
+    if (previous)
+      await previous.leave().catch(() => {})
   }
 
-  function bindHostPeer(next: Peer) {
-    next.on('connection', (connection) => {
+  function bindHostLink(next: RoomLink) {
+    next.onClient((peerId, message) => {
       const wire: WireClient = {
-        key: connection.peer,
-        send: message => sendWire(connection, message),
-        close: () => connection.close(),
+        key: peerId,
+        send: payload => next.sendServer(peerId, payload),
       }
 
-      connection.on('data', (raw) => {
-        try {
-          const message = parseWireData(raw) as ClientMessage
-          engine?.handle(wire, message)
-        }
-        catch (caught) {
-          wire.send({
-            type: 'error',
-            message: caught instanceof Error ? caught.message : 'Ошибка комнаты',
-          })
-        }
-      })
-
-      connection.on('close', () => {
-        engine?.disconnect(connection.peer)
-      })
+      try {
+        engine?.handle(wire, message)
+      }
+      catch (caught) {
+        wire.send({
+          type: 'error',
+          message: caught instanceof Error ? caught.message : 'Ошибка комнаты',
+        })
+      }
     })
 
-    next.on('disconnected', () => {
-      if (!next.destroyed)
-        next.reconnect()
-    })
-
-    next.on('close', () => {
-      linkReady.value = false
-      if (disposed || !snapshot.value || !hosting.value)
-        return
-      error.value = 'Связь с комнатой потеряна'
+    next.onPeerLeave((peerId) => {
+      engine?.disconnect(peerId)
     })
   }
 
-  function bindGuestConnection(connection: DataConnection) {
-    connection.on('data', (raw) => {
-      applyServerMessage(parseWireData(raw) as ServerMessage)
-    })
-
-    connection.on('close', () => {
+  function bindGuestLink(next: RoomLink) {
+    next.onServer(applyServerMessage)
+    next.onPeerLeave(() => {
       linkReady.value = false
       if (disposed || hosting.value)
         return
@@ -170,53 +146,50 @@ function useRoomBase() {
       return
     }
 
-    if (!guestConnection?.open)
+    if (!link)
       throw new Error('Нет связи с комнатой')
 
-    sendWire(guestConnection, message)
+    link.sendClient(message)
   }
 
-  async function connectAsHost(next: Peer, restore?: HostRoomState) {
+  function connectAsHost(next: RoomLink, restore?: HostRoomState) {
     disposed = false
-    peer = next
-    bindHostPeer(next)
+    link = next
+    bindHostLink(next)
     engine = new RoomEngine(persistHost)
     linkReady.value = true
     hosting.value = true
 
     if (restore)
       engine.hydrate(restore, deviceId.value, localWire)
+
+    next.becomeHost()
   }
 
   async function connectAsGuest(roomCode: string, message: ClientMessage, token: number) {
     abortIfStale(token, session)
     disposed = false
-    const next = createPeer()
-    peer = next
-    await waitForPeerOpen(next)
+    const next = await openGuestRoom(roomCode)
     abortIfStale(token, session)
-    const connection = next.connect(hostPeerId(roomCode), { reliable: true })
-    await waitForConnection(connection)
-    abortIfStale(token, session)
-    guestConnection = connection
-    bindGuestConnection(connection)
-    sendWire(connection, message)
+    link = next
+    bindGuestLink(next)
+    next.sendClient(message)
     linkReady.value = true
   }
 
   async function createRoom(name: string, bank: QuizBank) {
     connecting.value = true
     error.value = ''
-    teardown()
+    await teardown()
     const token = session
 
     try {
-      const claimed = await claimHostPeer()
+      const claimed = claimHostRoom()
       if (token !== session) {
-        claimed.peer.destroy()
+        await claimed.link.leave()
         return
       }
-      await connectAsHost(claimed.peer)
+      connectAsHost(claimed.link)
       if (token !== session || !engine)
         throw new Error('Не удалось создать комнату')
       engine.createRoom(claimed.code, name, deviceId.value, bank, localWire)
@@ -224,9 +197,9 @@ function useRoomBase() {
     catch (caught) {
       if (token !== session)
         return
-      teardown()
       persistHost(null)
       error.value = caught instanceof Error ? caught.message : 'Не удалось создать комнату'
+      await teardown()
       throw caught instanceof Error ? caught : new Error(error.value)
     }
     finally {
@@ -238,7 +211,7 @@ function useRoomBase() {
   async function joinRoom(roomCode: string, name: string) {
     connecting.value = true
     error.value = ''
-    teardown()
+    await teardown()
     persistHost(null)
     const token = session
 
@@ -253,7 +226,7 @@ function useRoomBase() {
     catch (caught) {
       if (token !== session)
         return
-      teardown()
+      await teardown()
       error.value = caught instanceof Error ? caught.message : 'Не удалось войти в комнату'
       throw caught instanceof Error ? caught : new Error(error.value)
     }
@@ -263,42 +236,35 @@ function useRoomBase() {
     }
   }
 
-  async function reconnect() {
+  async function reconnect(allowGuest = true) {
     if (hosting.value && hostState.value) {
-      connecting.value = true
       error.value = ''
       const saved = hostState.value
-      teardown()
+      await teardown()
       const token = session
       try {
-        const next = createPeer(hostPeerId(saved.code))
-        await waitForPeerOpen(next)
+        const next = openHostRoom(saved.code)
         if (token !== session) {
-          next.destroy()
+          await next.leave()
           return
         }
-        await connectAsHost(next, saved)
+        connectAsHost(next, saved)
       }
       catch (caught) {
         if (token !== session)
           return
-        teardown()
+        await teardown()
         persistHost(null)
         error.value = caught instanceof Error ? caught.message : 'Не удалось восстановить комнату'
-      }
-      finally {
-        if (token === session)
-          connecting.value = false
       }
       return
     }
 
-    if (!lastCode.value || hosting.value)
+    if (!allowGuest || !lastCode.value || hosting.value)
       return
 
-    connecting.value = true
     error.value = ''
-    teardown()
+    await teardown()
     const token = session
 
     try {
@@ -311,23 +277,19 @@ function useRoomBase() {
     catch (caught) {
       if (token !== session)
         return
-      teardown()
+      await teardown()
       error.value = caught instanceof Error ? caught.message : 'Не удалось переподключиться'
-    }
-    finally {
-      if (token === session)
-        connecting.value = false
     }
   }
 
-  function leaveRoom() {
+  async function leaveRoom() {
     try {
       send({ type: 'leave' })
     }
     catch {
       // already offline
     }
-    teardown()
+    await teardown()
     forgetRoom()
   }
 
@@ -376,6 +338,7 @@ function useRoomBase() {
     error,
     lastNotice,
     lastCode,
+    hosting,
     createRoom,
     joinRoom,
     reconnect,

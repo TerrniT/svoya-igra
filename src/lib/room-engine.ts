@@ -46,7 +46,7 @@ export class RoomEngine {
     const room: Room = {
       code,
       hostPlayerId: '',
-      bank,
+      bank: cloneState(bank),
       session: emptyRoomSession(),
       phase: 'lobby',
       currentQuestionId: null,
@@ -71,7 +71,7 @@ export class RoomEngine {
 
   hydrate(state: HostRoomState, deviceId: string, host: WireClient): Client {
     const room: Room = {
-      ...structuredClone(state),
+      ...cloneState(state),
       clients: new Map(),
     }
     this.room = room
@@ -356,7 +356,7 @@ export class RoomEngine {
       return
     }
 
-    this.onPersist(structuredClone({
+    this.onPersist(cloneState({
       code: this.room.code,
       hostPlayerId: this.room.hostPlayerId,
       bank: this.room.bank,
@@ -368,15 +368,19 @@ export class RoomEngine {
   }
 }
 
+function cloneState<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T
+}
+
 function snapshot(room: Room): RoomSnapshot {
-  return {
+  return cloneState({
     code: room.code,
     phase: room.phase,
     currentQuestionId: room.currentQuestionId,
     answers: room.answers,
     bank: room.bank,
     session: room.session,
-  }
+  })
 }
 
 function setConnected(room: Room, playerId: string, connected: boolean) {

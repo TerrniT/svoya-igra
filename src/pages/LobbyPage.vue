@@ -13,12 +13,14 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { usePlayState } from '@/composables/usePlayState'
+import { cn } from '@/lib/utils'
 
 const router = useRouter()
 const {
   room,
   inRoom,
   isHost,
+  meId,
   players,
   questions,
   categories,
@@ -85,13 +87,13 @@ function beginLocal() {
 </script>
 
 <template>
-  <div class="mx-auto flex max-w-3xl flex-col gap-8">
-    <section class="flex flex-col gap-3 pt-4 text-center">
+  <div class="mx-auto flex max-w-3xl flex-col gap-6 sm:gap-8">
+    <section class="flex flex-col gap-3 pt-1 text-center sm:pt-4">
       <Badge variant="secondary" class="mx-auto">{{ inRoom ? `Комната ${room.code.value}` : 'Перед охотой' }}</Badge>
-      <h1 class="font-display text-4xl tracking-[0.14em] text-balance uppercase sm:text-5xl">
+      <h1 class="font-display text-3xl tracking-[0.12em] text-balance uppercase sm:text-5xl sm:tracking-[0.14em]">
         {{ inRoom ? 'Прайд собирается' : 'Соберите прайд' }}
       </h1>
-      <p class="text-muted-foreground text-pretty">
+      <p class="text-muted-foreground text-pretty text-sm sm:text-base">
         {{ inRoom
           ? 'Остальные заходят по коду или QR. Ведущий не закрывает эту вкладку — комната живёт на его устройстве.'
           : 'Создайте комнату для нескольких устройств или сыграйте на одном экране.' }}
@@ -113,11 +115,17 @@ function beginLocal() {
               <li
                 v-for="(player, index) in players"
                 :key="player.id"
-                class="flex items-center justify-between gap-3 rounded-lg border border-border/80 bg-muted/30 px-3 py-2"
+                :class="cn(
+                  'flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5',
+                  player.id === meId
+                    ? 'player-me'
+                    : 'border-border/80 bg-muted/30',
+                )"
               >
-                <div class="flex min-w-0 items-center gap-3">
+                <div class="flex min-w-0 flex-wrap items-center gap-2">
                   <span class="font-board text-primary text-xl">{{ index + 1 }}</span>
                   <span class="truncate font-medium">{{ player.name }}</span>
+                  <Badge v-if="player.id === meId" variant="default">Вы</Badge>
                   <Badge v-if="player.isHost" variant="secondary">Ведущий</Badge>
                   <Badge v-if="!player.connected" variant="outline">офлайн</Badge>
                 </div>
@@ -133,13 +141,13 @@ function beginLocal() {
               </li>
             </ul>
           </CardContent>
-          <CardFooter class="flex flex-wrap justify-between gap-2">
-            <Button variant="ghost" @click="room.leaveRoom()">Выйти</Button>
-            <div v-if="isHost" class="flex flex-wrap gap-2">
-              <Button variant="outline" as-child>
+          <CardFooter class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
+            <Button variant="ghost" class="w-full sm:w-auto" @click="room.leaveRoom()">Выйти</Button>
+            <div v-if="isHost" class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+              <Button variant="outline" class="w-full sm:w-auto" as-child>
                 <RouterLink to="/admin">К вопросам</RouterLink>
               </Button>
-              <Button :disabled="!canStartRoom" @click="beginRoom">
+              <Button class="w-full sm:w-auto" :disabled="!canStartRoom" @click="beginRoom">
                 <PawPrintIcon data-icon="inline-start" />
                 Начать игру
               </Button>
@@ -149,8 +157,8 @@ function beginLocal() {
       </div>
     </template>
 
-    <Tabs v-else default-value="room">
-      <TabsList>
+    <Tabs v-else default-value="room" class="gap-4">
+      <TabsList class="w-full sm:w-auto">
         <TabsTrigger value="room">Комната</TabsTrigger>
         <TabsTrigger value="local">Один экран</TabsTrigger>
       </TabsList>
@@ -179,7 +187,7 @@ function beginLocal() {
                 </FieldGroup>
                 <Button type="submit" :disabled="room.connecting.value">
                   <QrCodeIcon data-icon="inline-start" />
-                  Создать
+                  {{ room.connecting.value ? 'Создаём…' : 'Создать' }}
                 </Button>
               </form>
             </CardContent>
@@ -216,7 +224,7 @@ function beginLocal() {
               <FieldGroup>
                 <Field :data-invalid="localNameError ? true : undefined">
                   <FieldLabel for="player-name">Имя</FieldLabel>
-                  <div class="flex gap-2">
+                  <div class="flex flex-col gap-2 sm:flex-row">
                     <Input
                       id="player-name"
                       v-model="localName"
@@ -261,15 +269,15 @@ function beginLocal() {
               </li>
             </ul>
           </CardContent>
-          <CardFooter class="flex flex-wrap justify-between gap-3">
+          <CardFooter class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-between">
             <p class="text-muted-foreground text-sm">
               Категорий: {{ categories.length }} · вопросов: {{ questions.length }}
             </p>
-            <div class="flex flex-wrap gap-2">
-              <Button variant="outline" as-child>
+            <div class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
+              <Button variant="outline" class="w-full sm:w-auto" as-child>
                 <RouterLink to="/admin">К вопросам</RouterLink>
               </Button>
-              <Button :disabled="!canStartLocal" @click="beginLocal">
+              <Button class="w-full sm:w-auto" :disabled="!canStartLocal" @click="beginLocal">
                 <PawPrintIcon data-icon="inline-start" />
                 {{ localSession.startedAt.value ? 'Новая игра' : 'Начать игру' }}
               </Button>
@@ -282,7 +290,9 @@ function beginLocal() {
     <Alert v-if="!questions.length">
       <AlertTitle>Поле пустое</AlertTitle>
       <AlertDescription>
-        В админке ещё нет вопросов. Добавьте категории и карточки, затем создавайте комнату.
+        {{ isHost
+          ? 'В админке ещё нет вопросов. Добавьте категории и карточки, затем создавайте комнату.'
+          : 'Ведущий ещё не добавил вопросы. Дождитесь старта.' }}
       </AlertDescription>
     </Alert>
   </div>

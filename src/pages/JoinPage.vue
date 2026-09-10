@@ -49,7 +49,7 @@ async function join() {
 <template>
   <div class="mx-auto flex max-w-md flex-col gap-6 pt-4">
     <section class="flex flex-col gap-2 text-center">
-      <h1 class="font-display text-4xl tracking-[0.12em] uppercase">Вход в комнату</h1>
+      <h1 class="font-display text-3xl tracking-[0.12em] uppercase sm:text-4xl">Вход в комнату</h1>
       <p class="text-muted-foreground">Введите код с экрана ведущего или пришлите по QR.</p>
     </section>
 
@@ -87,7 +87,9 @@ async function join() {
               <FieldError v-if="nameError" :errors="[nameError]" />
             </Field>
           </FieldGroup>
-          <Button type="submit" :disabled="room.connecting.value">Войти</Button>
+          <Button type="submit" :disabled="room.connecting.value">
+            {{ room.connecting.value ? 'Входим…' : 'Войти' }}
+          </Button>
         </form>
       </CardContent>
       <CardFooter>

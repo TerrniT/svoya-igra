@@ -12,6 +12,7 @@ const router = useRouter()
 const {
   inRoom,
   isHost,
+  meId,
   room,
   rankedPlayers,
   answeredQuestionIds,
@@ -65,10 +66,11 @@ function backToLobby() {
           <li
             v-for="(player, index) in rankedPlayers"
             :key="player.id"
-            class="flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/20 p-3"
+            class="flex flex-col gap-2 rounded-xl border p-3"
+            :class="player.id === meId ? 'player-me' : 'border-border/80 bg-muted/20'"
           >
             <div class="flex items-center justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-3">
+              <div class="flex min-w-0 flex-wrap items-center gap-2">
                 <span
                   :class="cn(
                     'font-board text-2xl',
@@ -78,6 +80,7 @@ function backToLobby() {
                   {{ index + 1 }}
                 </span>
                 <span class="truncate text-lg font-medium">{{ player.name }}</span>
+                <Badge v-if="player.id === meId">Вы</Badge>
               </div>
               <span class="font-board text-primary text-3xl">{{ player.score }}</span>
             </div>
@@ -90,11 +93,11 @@ function backToLobby() {
           </li>
         </ol>
       </CardContent>
-      <CardFooter class="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" @click="backToLobby">
+      <CardFooter class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+        <Button variant="outline" class="w-full sm:w-auto" @click="backToLobby">
           К игрокам
         </Button>
-        <Button v-if="!inRoom || isHost" @click="playAgain">
+        <Button v-if="!inRoom || isHost" class="w-full sm:w-auto" @click="playAgain">
           <PawPrintIcon data-icon="inline-start" />
           Ещё партия
         </Button>

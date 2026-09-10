@@ -11,7 +11,8 @@ const room = useRoom()
 const { getBank, categories, questions } = useQuizBank()
 
 onMounted(() => {
-  void room.reconnect()
+  const guests = route.name !== 'lobby' && route.name !== 'join'
+  void room.reconnect(guests)
 })
 
 watch(

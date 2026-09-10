@@ -20,6 +20,7 @@ const router = useRouter()
 const {
   inRoom,
   isHost,
+  me,
   room,
   players,
   questions,
@@ -167,9 +168,12 @@ function backToBoard() {
       <p class="font-display text-primary text-xs tracking-[0.32em] uppercase">
         {{ categoryName }} · {{ question.value }}
       </p>
-      <h1 class="font-display text-3xl leading-tight text-balance sm:text-4xl">
+      <h1 class="font-display text-2xl leading-tight text-balance sm:text-4xl">
         {{ question.text }}
       </h1>
+      <p v-if="inRoom && me" class="rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-sm">
+        Вы отвечаете как <span class="font-medium">{{ me.name }}</span>
+      </p>
       <p v-if="winnerName" class="text-primary font-medium">
         Верно! Баллы получает {{ winnerName }}.
       </p>
@@ -192,14 +196,15 @@ function backToBoard() {
       </button>
     </div>
 
-    <div class="flex flex-wrap justify-between gap-2">
-      <Button v-if="!inRoom || isHost" variant="ghost" @click="backToBoard">
+    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
+      <Button v-if="!inRoom || isHost" variant="ghost" class="w-full sm:w-auto" @click="backToBoard">
         Назад к полю
       </Button>
       <p v-else class="text-muted-foreground text-sm">Ведущий закроет карточку.</p>
       <Button
         v-if="!inRoom || isHost"
         variant="outline"
+        class="w-full sm:w-auto"
         :disabled="verdict === 'correct'"
         @click="giveUp"
       >
@@ -220,6 +225,7 @@ function backToBoard() {
             v-for="player in players"
             :key="player.id"
             size="lg"
+            class="w-full"
             @click="award(player.id)"
           >
             {{ player.name }}

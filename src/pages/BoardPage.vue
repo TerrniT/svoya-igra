@@ -57,11 +57,11 @@ if (finished.value && !inRoom.value)
     <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
       <div class="flex flex-col gap-1">
         <p class="font-display text-primary text-xs tracking-[0.32em] uppercase">Игровое поле</p>
-        <h1 class="font-display text-3xl tracking-[0.12em] uppercase sm:text-4xl">
+        <h1 class="font-display text-2xl tracking-[0.1em] uppercase sm:text-4xl sm:tracking-[0.12em]">
           {{ isHost ? 'Выберите карточку' : 'Ждём карточку' }}
         </h1>
       </div>
-      <p class="text-muted-foreground text-sm">
+      <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
         {{ isHost
           ? 'Номиналы от 100 до 700. Закрытая клетка уже сыграна.'
           : 'Ведущий откроет вопрос. Отвечать будете со своего устройства.' }}

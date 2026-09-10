@@ -23,9 +23,6 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
-      peerjs:
-        specifier: ^1.5.5
-        version: 1.5.5
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -41,6 +38,9 @@ importers:
       tailwindcss:
         specifier: ^4.3.3
         version: 4.3.3
+      trystero:
+        specifier: ^0.25.4
+        version: 0.25.4
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -502,15 +502,14 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@msgpack/msgpack@2.8.0':
-    resolution: {integrity: sha512-h9u4u/jiIRKbq25PM+zymTyW6bhTzELvOoUd+AvYriWOAKpLGnIamaET3pnHYoI5iYphAHBI4ayx0MehR+VVPQ==}
-    engines: {node: '>= 10'}
-
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     resolution: {integrity: sha512-oTXEIha4SsuXdTA4Iyskj0kpdx2yVXdhd75c2v3xGrHFfVMsbhTPZU/nMPL4sWKo4pBHm3aucLaqGlF696dTyQ==}
     engines: {node: ^22.20 || ^24.12 || >=25}
     cpu: [x64]
     os: [linux]
+
+  '@noble/secp256k1@3.2.0':
+    resolution: {integrity: sha512-Z3ZAWOTxJ0EuTuZTi7Y69iK7GgrLHh8sgm45lVDhg/b3Nk1TpAiKhick2KkZisHuupeepSkyIydN/J459SdX1w==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -749,6 +748,12 @@ packages:
     resolution: {integrity: sha512-1QNT8EXVKUx537/qvn/tFGs48eITBrrTWcyaMVjD4SCpij7E1LksbXZQLqkXBoJ9lfOVely/8Fgzqe/olQ+drw==}
     peerDependencies:
       vue: ^2.7.0 || ^3.0.0
+
+  '@trystero-p2p/core@0.25.4':
+    resolution: {integrity: sha512-ehvSL1FqW962XyEctXngeDF/IOM1bWmfCKBNR4vwmVa0JGfM0+dlY4TEzSEGghYp3qqGCrpFIVTxdvlBUGVO6Q==}
+
+  '@trystero-p2p/nostr@0.25.4':
+    resolution: {integrity: sha512-QDox1VVHl0ro/CLfQVUtMS9EQbtJhQM7CCsO4SGv9KrPBT+x3bmOqQ4Y6iugsLzQ6sW+a2cwUTxjDRz/BywqMg==}
 
   '@ts-morph/common@0.29.0':
     resolution: {integrity: sha512-35oUmphHbJvQ/+UTwFNme/t2p3FoKiGJ5auTjjpNTop2dyREspirjMy82PLSC1pnDJ8ah1GU98hwpVt64YXQsg==}
@@ -1303,9 +1308,6 @@ packages:
   etag@1.8.1:
     resolution: {integrity: sha512-aIL5Fx7mawVa300al2BnEE4iNvo1qETxLrPI/o05L7z6go7fCw1J6EQmbK4FmJ2AS7kgVF/KEZWufBfdClMcPg==}
     engines: {node: '>= 0.6'}
-
-  eventemitter3@4.0.7:
-    resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==}
 
   eventsource-parser@3.1.1:
     resolution: {integrity: sha512-EKN1vKAMcZ8MlYMpaNuxN6R9yakzH6uajHcHVTqWJzvu5pWw9DyhbP35HH8MVBQ+dZjAfDxk+A8NiR9KWaXiyQ==}
@@ -1938,14 +1940,6 @@ packages:
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
-  peerjs-js-binarypack@2.1.0:
-    resolution: {integrity: sha512-YIwCC+pTzp3Bi8jPI9UFKO0t0SLo6xALnHkiNt/iUFmUUZG0fEEmEyFKvjsDKweiFitzHRyhuh6NvyJZ4nNxMg==}
-    engines: {node: '>= 14.0.0'}
-
-  peerjs@1.5.5:
-    resolution: {integrity: sha512-viMUCPDL6CSfOu0ZqVcFqbWRXNHIbv2lPqNbrBIjbFYrflebOjItJ4hPfhjnuUCstqciHVu9vVJ7jFqqKi/EuQ==}
-    engines: {node: '>= 14'}
-
   perfect-debounce@2.1.0:
     resolution: {integrity: sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g==}
 
@@ -2120,9 +2114,6 @@ packages:
   sax@1.2.4:
     resolution: {integrity: sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==}
 
-  sdp@3.2.2:
-    resolution: {integrity: sha512-xZocWwfyp4hkbN4hLWxMjmv2Q8aNa9MhmOZ7L9aCZPT+dZsgRr6wZRrSYE3HTdyk/2pZKPSgqI7ns7Een1xMSA==}
-
   semver@6.3.1:
     resolution: {integrity: sha512-BR7VvDCVHO+q2xBEWskxS6DJE1qRnb7DxzUrogb71CWoSficBxYsiAGd+Kl0mmq/MprG9yArRkyrQxTO6XjMzA==}
     hasBin: true
@@ -2273,6 +2264,9 @@ packages:
   toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
     engines: {node: '>=0.6'}
+
+  trystero@0.25.4:
+    resolution: {integrity: sha512-tFYn/fO1kBeSKLUxRPKHH2n5jIuz9zlPPF9SmCVrGBiPNDGtFZyHuQONMUwftnCclTWlVsLoTus5/6eHhVEg+Q==}
 
   ts-morph@28.0.0:
     resolution: {integrity: sha512-Wp3tnZ2bzwxyTZMtgWVzXDfm7lB1Drz+y9DmmYH/L702PQhPyVrp3pkou3yIz4qjS14GY9kcpmLiOOMvl8oG1g==}
@@ -2437,10 +2431,6 @@ packages:
 
   web-worker@1.5.0:
     resolution: {integrity: sha512-RiMReJrTAiA+mBjGONMnjVDP2u3p9R1vkcGz6gDIrOMT3oGuYwX2WRMYI9ipkphSuE5XKEhydbhNEJh4NY9mlw==}
-
-  webrtc-adapter@9.0.6:
-    resolution: {integrity: sha512-CHbl2ZQbxx164IgWRgzJno4hWtM4tFbRam1QfI3Yxhs3w/DvqluVxVWeXs3oL5/fbGkSNLKo0Ty5MgUWceNhog==}
-    engines: {node: '>=6.0.0', npm: '>=3.10.0'}
 
   which-module@2.0.1:
     resolution: {integrity: sha512-iBdZ57RDvnOR9AGBhML2vFZf7h8vmBjhoaZqODJBFWHVtKkDmKuHai3cx5PgVMrX5YDNp27AofYbAwctSS+vhQ==}
@@ -2922,10 +2912,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@msgpack/msgpack@2.8.0': {}
-
   '@napi-rs/lzma-linux-x64-gnu@1.5.1':
     optional: true
+
+  '@noble/secp256k1@3.2.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -3092,6 +3082,13 @@ snapshots:
     dependencies:
       '@tanstack/virtual-core': 3.17.9
       vue: 3.5.42(typescript@5.7.3)
+
+  '@trystero-p2p/core@0.25.4': {}
+
+  '@trystero-p2p/nostr@0.25.4':
+    dependencies:
+      '@noble/secp256k1': 3.2.0
+      '@trystero-p2p/core': 0.25.4
 
   '@ts-morph/common@0.29.0':
     dependencies:
@@ -3671,8 +3668,6 @@ snapshots:
   esutils@2.0.3: {}
 
   etag@1.8.1: {}
-
-  eventemitter3@4.0.7: {}
 
   eventsource-parser@3.1.1: {}
 
@@ -4255,15 +4250,6 @@ snapshots:
 
   pathe@2.0.3: {}
 
-  peerjs-js-binarypack@2.1.0: {}
-
-  peerjs@1.5.5:
-    dependencies:
-      '@msgpack/msgpack': 2.8.0
-      eventemitter3: 4.0.7
-      peerjs-js-binarypack: 2.1.0
-      webrtc-adapter: 9.0.6
-
   perfect-debounce@2.1.0: {}
 
   picocolors@1.1.1: {}
@@ -4462,8 +4448,6 @@ snapshots:
   safer-buffer@2.1.2: {}
 
   sax@1.2.4: {}
-
-  sdp@3.2.2: {}
 
   semver@6.3.1: {}
 
@@ -4680,6 +4664,10 @@ snapshots:
 
   toidentifier@1.0.1: {}
 
+  trystero@0.25.4:
+    dependencies:
+      '@trystero-p2p/nostr': 0.25.4
+
   ts-morph@28.0.0:
     dependencies:
       '@ts-morph/common': 0.29.0
@@ -4812,10 +4800,6 @@ snapshots:
       typescript: 5.7.3
 
   web-worker@1.5.0: {}
-
-  webrtc-adapter@9.0.6:
-    dependencies:
-      sdp: 3.2.2
 
   which-module@2.0.1: {}
 

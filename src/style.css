@@ -87,6 +87,11 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
   html,
   body,
   #app {
@@ -95,6 +100,7 @@
 
   body {
     @apply bg-background text-foreground font-sans;
+    touch-action: manipulation;
   }
 }
 
@@ -135,6 +141,7 @@
 .score-chip {
   display: flex;
   min-width: 0;
+  flex-shrink: 0;
   align-items: center;
   gap: 0.75rem;
   border: 1px solid oklch(0.78 0.155 78 / 0.28);
@@ -143,9 +150,30 @@
   padding: 0.2rem 0.85rem;
 }
 
+.score-chip-me,
+.player-me {
+  border-color: oklch(0.78 0.155 78 / 0.8);
+  background: oklch(0.38 0.08 70 / 0.42);
+  box-shadow: inset 0 0 0 1px oklch(0.78 0.155 78 / 0.28);
+}
+
+.scores-rail {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.scores-rail::-webkit-scrollbar {
+  display: none;
+}
+
 .board-scroll {
   overflow-x: auto;
   padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
 .board-grid {
@@ -154,6 +182,26 @@
   grid-template-columns: repeat(var(--columns), minmax(9.5rem, 1fr));
   gap: 0.7rem;
   min-width: calc(var(--columns) * 10.2rem);
+}
+
+@media (max-width: 640px) {
+  .board-grid {
+    grid-template-columns: repeat(var(--columns), minmax(6.4rem, 1fr));
+    min-width: calc(var(--columns) * 7rem);
+    gap: 0.45rem;
+  }
+
+  .category-head {
+    min-height: 3.4rem;
+    padding: 0.4rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+  }
+
+  .value-cell {
+    min-height: 4.25rem;
+    font-size: 1.45rem;
+  }
 }
 
 .category-head {
@@ -191,9 +239,20 @@
 }
 
 .value-cell:hover:not(:disabled) {
-  transform: translateY(-3px);
-  border-color: oklch(0.78 0.155 78 / 0.8);
-  box-shadow: 0 14px 28px oklch(0.78 0.155 78 / 0.16);
+  transform: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .value-cell:hover:not(:disabled) {
+    transform: translateY(-3px);
+    border-color: oklch(0.78 0.155 78 / 0.8);
+    box-shadow: 0 14px 28px oklch(0.78 0.155 78 / 0.16);
+  }
+
+  .answer-btn:hover:not(:disabled) {
+    transform: translateX(4px);
+    border-color: oklch(0.78 0.155 78 / 0.7);
+  }
 }
 
 .value-cell-played,
@@ -231,11 +290,6 @@
   color: inherit;
   font-size: 1.05rem;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
-}
-
-.answer-btn:hover:not(:disabled) {
-  transform: translateX(4px);
-  border-color: oklch(0.78 0.155 78 / 0.7);
 }
 
 .answer-btn-wrong {
