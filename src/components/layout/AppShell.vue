@@ -11,7 +11,7 @@ const { rankedPlayers, inRoom, canEditBank, meId, me, chooserId, room, getQuesti
 
 const onQuestion = computed(() => route.name === 'question')
 const showScores = computed(() =>
-  route.name === 'board' || route.name === 'results' || (route.name === 'question' && !inRoom.value),
+  route.name === 'board' || (route.name === 'question' && !inRoom.value),
 )
 
 const questionStatuses = computed(() => {

@@ -54,6 +54,9 @@ router.beforeEach((to) => {
   if (!to.meta.requiresPlayers)
     return true
 
+  if (to.name === 'results' && to.query.demo === '1')
+    return true
+
   if (inRoom.value || room.lastCode.value || room.connecting.value)
     return true
   if (players.value.length === 0)
