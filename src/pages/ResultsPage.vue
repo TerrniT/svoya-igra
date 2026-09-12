@@ -97,7 +97,7 @@ function backToLobby() {
         <Button variant="outline" class="w-full sm:w-auto" @click="backToLobby">
           К игрокам
         </Button>
-        <Button v-if="!inRoom || isHost" class="w-full sm:w-auto" @click="playAgain">
+        <Button v-if="!inRoom || isHost" size="lg" class="w-full sm:w-auto" @click="playAgain">
           <PawPrintIcon data-icon="inline-start" />
           Ещё партия
         </Button>

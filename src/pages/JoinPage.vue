@@ -87,7 +87,7 @@ async function join() {
               <FieldError v-if="nameError" :errors="[nameError]" />
             </Field>
           </FieldGroup>
-          <Button type="submit" :disabled="room.connecting.value">
+          <Button type="submit" size="lg" :disabled="room.connecting.value">
             {{ room.connecting.value ? 'Входим…' : 'Войти' }}
           </Button>
         </form>

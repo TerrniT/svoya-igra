@@ -147,7 +147,7 @@ function beginLocal() {
               <Button variant="outline" class="w-full sm:w-auto" as-child>
                 <RouterLink to="/admin">К вопросам</RouterLink>
               </Button>
-              <Button class="w-full sm:w-auto" :disabled="!canStartRoom" @click="beginRoom">
+              <Button size="lg" class="w-full sm:w-auto" :disabled="!canStartRoom" @click="beginRoom">
                 <PawPrintIcon data-icon="inline-start" />
                 Начать игру
               </Button>
@@ -185,7 +185,7 @@ function beginLocal() {
                     <FieldError v-if="hostNameError" :errors="[hostNameError]" />
                   </Field>
                 </FieldGroup>
-                <Button type="submit" :disabled="room.connecting.value">
+                <Button type="submit" size="lg" :disabled="room.connecting.value">
                   <QrCodeIcon data-icon="inline-start" />
                   {{ room.connecting.value ? 'Создаём…' : 'Создать' }}
                 </Button>
@@ -202,7 +202,7 @@ function beginLocal() {
               <p class="text-muted-foreground text-sm">
                 На телефоне отсканируйте QR или откройте страницу входа и введите код.
               </p>
-              <Button variant="outline" as-child>
+              <Button variant="outline" size="lg" as-child>
                 <RouterLink to="/join">
                   <DoorOpenIcon data-icon="inline-start" />
                   Ввести код
@@ -277,7 +277,7 @@ function beginLocal() {
               <Button variant="outline" class="w-full sm:w-auto" as-child>
                 <RouterLink to="/admin">К вопросам</RouterLink>
               </Button>
-              <Button class="w-full sm:w-auto" :disabled="!canStartLocal" @click="beginLocal">
+              <Button size="lg" class="w-full sm:w-auto" :disabled="!canStartLocal" @click="beginLocal">
                 <PawPrintIcon data-icon="inline-start" />
                 {{ localSession.startedAt.value ? 'Новая игра' : 'Начать игру' }}
               </Button>

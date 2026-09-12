@@ -35,13 +35,13 @@ const showScores = computed(() =>
           >
             {{ room.code.value }}
           </span>
-          <Button variant="ghost" size="sm" class="px-2 sm:px-3" as-child>
+          <Button variant="ghost" size="sm" as-child>
             <RouterLink to="/">Игроки</RouterLink>
           </Button>
-          <Button variant="ghost" size="sm" class="px-2 sm:px-3" as-child>
+          <Button variant="ghost" size="sm" as-child>
             <RouterLink to="/game">Поле</RouterLink>
           </Button>
-          <Button v-if="canEditBank && route.name !== 'join'" variant="outline" size="sm" class="px-2 sm:px-3" as-child>
+          <Button v-if="canEditBank && route.name !== 'join'" variant="outline" size="sm" as-child>
             <RouterLink to="/admin">Админка</RouterLink>
           </Button>
         </nav>

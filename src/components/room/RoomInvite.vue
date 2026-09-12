@@ -46,11 +46,11 @@ async function copyLink() {
     <p class="font-display text-primary text-xs tracking-[0.32em] uppercase">Код комнаты</p>
     <p class="font-board text-primary text-5xl tracking-[0.2em] sm:text-6xl sm:tracking-[0.28em]">{{ code }}</p>
     <div class="flex w-full max-w-xs flex-col gap-2 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
-      <Button variant="outline" size="sm" class="w-full sm:w-auto" @click="copyCode">
+      <Button variant="outline" class="w-full sm:w-auto" @click="copyCode">
         <CopyIcon data-icon="inline-start" />
         Код
       </Button>
-      <Button variant="outline" size="sm" class="w-full sm:w-auto" @click="copyLink">
+      <Button variant="outline" class="w-full sm:w-auto" @click="copyLink">
         <CopyIcon data-icon="inline-start" />
         Ссылка
       </Button>
