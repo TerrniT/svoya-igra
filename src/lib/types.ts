@@ -42,4 +42,5 @@ export interface GameSession {
   scores: Record<string, number>
   answeredQuestionIds: string[]
   startedAt: string | null
+  chooserId: string | null
 }

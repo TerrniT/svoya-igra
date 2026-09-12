@@ -7,7 +7,7 @@ import { expectedRespondents } from '@/lib/question-round'
 import { cn } from '@/lib/utils'
 
 const route = useRoute()
-const { rankedPlayers, inRoom, canEditBank, meId, me, room, getQuestion } = usePlayState()
+const { rankedPlayers, inRoom, canEditBank, meId, me, chooserId, room, getQuestion } = usePlayState()
 
 const onQuestion = computed(() => route.name === 'question')
 const showScores = computed(() =>
@@ -102,10 +102,15 @@ const questionStatuses = computed(() => {
           <div
             v-for="player in rankedPlayers"
             :key="player.id"
-            :class="cn('score-chip', player.id === meId && 'score-chip-me')"
+            :class="cn(
+              'score-chip',
+              player.id === meId && 'score-chip-me',
+              player.id === chooserId && 'score-chip-chooser',
+            )"
           >
             <span class="truncate font-medium">{{ player.name }}</span>
             <span v-if="player.id === meId" class="text-primary text-[0.65rem] tracking-[0.16em] uppercase">Вы</span>
+            <span v-if="player.id === chooserId" class="text-primary text-[0.65rem] tracking-[0.16em] uppercase">ходит</span>
             <span class="font-board text-lg text-primary">{{ player.score }}</span>
           </div>
         </div>

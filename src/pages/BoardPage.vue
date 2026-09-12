@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import FirstChooserDialog from '@/components/room/FirstChooserDialog.vue'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { usePlayState } from '@/composables/usePlayState'
 import { QUESTION_VALUES } from '@/lib/types'
@@ -10,12 +11,18 @@ const router = useRouter()
 const {
   inRoom,
   isHost,
+  meId,
   room,
+  players,
+  chooser,
+  chooserId,
   categories,
   questions,
   questionAt,
   isAnswered,
   isBoardComplete,
+  canOpenQuestion,
+  setChooser,
 } = usePlayState()
 
 const questionIds = computed(() => questions.value.map(question => question.id))
@@ -34,13 +41,34 @@ const rows = computed(() =>
   ),
 )
 
+const needFirstChooser = computed(() =>
+  Boolean(isHost.value && !chooserId.value && players.value.length),
+)
+
+const heading = computed(() => {
+  if (!chooser.value)
+    return isHost.value ? 'Кто ходит первым?' : 'Ждём первого игрока'
+  if (chooser.value.id === meId.value)
+    return 'Ваш ход — выберите карточку'
+  return `Выбирает ${chooser.value.name}`
+})
+
+const hint = computed(() => {
+  if (!chooser.value) {
+    return isHost.value
+      ? 'Назначьте игрока, который откроет первую карточку.'
+      : 'Ведущий выбирает, кто ходит первым.'
+  }
+  if (canOpenQuestion())
+    return 'Номиналы от 100 до 700. Закрытая клетка уже сыграна.'
+  return `${chooser.value.name} выбирает вопрос. Дальше ход по списку.`
+})
+
 function openQuestion(id: string) {
-  if (isAnswered(id))
+  if (isAnswered(id) || !canOpenQuestion())
     return
 
   if (inRoom.value) {
-    if (!isHost.value)
-      return
     room.openQuestion(id)
     return
   }
@@ -58,13 +86,11 @@ if (finished.value && !inRoom.value)
       <div class="flex flex-col gap-1">
         <p class="font-display text-primary text-xs tracking-[0.32em] uppercase">Игровое поле</p>
         <h1 class="font-display text-2xl tracking-[0.1em] uppercase sm:text-4xl sm:tracking-[0.12em]">
-          {{ isHost ? 'Выберите карточку' : 'Ждём карточку' }}
+          {{ heading }}
         </h1>
       </div>
       <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
-        {{ isHost
-          ? 'Номиналы от 100 до 700. Закрытая клетка уже сыграна.'
-          : 'Ведущий откроет вопрос. Отвечать будете со своего устройства.' }}
+        {{ hint }}
       </p>
     </div>
 
@@ -93,7 +119,7 @@ if (finished.value && !inRoom.value)
             <button
               v-if="cell.question"
               type="button"
-              :disabled="cell.answered || (inRoom && !isHost)"
+              :disabled="cell.answered || !canOpenQuestion()"
               :class="cn('value-cell', cell.answered && 'value-cell-played')"
               @click="openQuestion(cell.question.id)"
             >
@@ -105,5 +131,12 @@ if (finished.value && !inRoom.value)
         </template>
       </div>
     </div>
+
+    <FirstChooserDialog
+      :open="needFirstChooser"
+      :dismissible="false"
+      :players
+      @pick="setChooser"
+    />
   </div>
 </template>

@@ -163,6 +163,11 @@
   box-shadow: inset 0 0 0 1px oklch(0.78 0.155 78 / 0.28);
 }
 
+.score-chip-chooser {
+  border-color: oklch(0.82 0.16 78 / 0.95);
+  box-shadow: 0 0 0 1px oklch(0.78 0.155 78 / 0.45);
+}
+
 .status-chip-thinking {
   opacity: 0.82;
 }

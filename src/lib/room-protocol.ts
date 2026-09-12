@@ -16,6 +16,7 @@ export interface RoomSession {
   scores: Record<string, number>
   answeredQuestionIds: string[]
   startedAt: string | null
+  chooserId: string | null
 }
 
 export interface PlayerSubmission {
@@ -42,14 +43,15 @@ export type ClientMessage =
   | { type: 'reconnect', code: string, deviceId: string }
   | { type: 'leave' }
   | { type: 'updateBank', bank: QuizBank }
-  | { type: 'start' }
+  | { type: 'start', firstChooserId: string }
+  | { type: 'setChooser', playerId: string }
   | { type: 'openQuestion', questionId: string }
   | { type: 'backToBoard' }
   | { type: 'answer', questionId: string, answerIds?: string[], text?: string }
   | { type: 'reveal' }
   | { type: 'awardFree', questionId: string, playerIds: string[] }
   | { type: 'skip', questionId: string }
-  | { type: 'playAgain' }
+  | { type: 'playAgain', firstChooserId: string }
   | { type: 'kick', playerId: string }
 
 export type ServerMessage =
@@ -64,6 +66,7 @@ export function emptyRoomSession(): RoomSession {
     scores: {},
     answeredQuestionIds: [],
     startedAt: null,
+    chooserId: null,
   }
 }
 
@@ -73,5 +76,6 @@ export function toLocalSession(session: RoomSession): GameSession {
     scores: session.scores,
     answeredQuestionIds: session.answeredQuestionIds,
     startedAt: session.startedAt,
+    chooserId: session.chooserId,
   }
 }

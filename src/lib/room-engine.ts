@@ -1,6 +1,7 @@
 import type { Answer, QuizBank } from '@/lib/types'
 import type { ClientMessage, PlayerSubmission, RoomPhase, RoomPlayer, RoomSession, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
 import { emptyRoomSession } from '@/lib/room-protocol'
+import { nextChooserId, requireChooser } from '@/lib/chooser'
 import { createId } from '@/lib/ids'
 import { everyoneSubmitted, questionKind, scoreSubmission } from '@/lib/question-round'
 
@@ -87,6 +88,7 @@ export class RoomEngine {
       roundScores: state.roundScores ?? {},
       clients: new Map(),
     }
+    room.session.chooserId ??= null
     this.room = room
 
     for (const player of room.session.players)
@@ -147,6 +149,7 @@ export class RoomEngine {
       }
       room.session.players = room.session.players.filter(player => player.id !== current.playerId)
       delete room.session.scores[current.playerId]
+      this.reassignChooser(room)
       this.broadcastState(room)
       this.persist()
       wire.close?.()
@@ -178,6 +181,7 @@ export class RoomEngine {
       room.session.scores = scores
       room.session.answeredQuestionIds = []
       room.session.startedAt = new Date().toISOString()
+      room.session.chooserId = requireChooser(room.session.players, message.firstChooserId)
       room.phase = 'board'
       room.currentQuestionId = null
       room.answers = []
@@ -187,9 +191,23 @@ export class RoomEngine {
       return current
     }
 
-    if (message.type === 'openQuestion') {
+    if (message.type === 'setChooser') {
       if (!this.requireHost(current, room))
-        throw new Error('Карточки открывает ведущий')
+        throw new Error('Первого игрока выбирает ведущий')
+      if (room.phase !== 'board' && room.phase !== 'lobby')
+        throw new Error('Сейчас нельзя сменить того, кто выбирает')
+      room.session.chooserId = requireChooser(room.session.players, message.playerId)
+      room.phase = 'board'
+      this.broadcastState(room)
+      this.persist()
+      return current
+    }
+
+    if (message.type === 'openQuestion') {
+      if (!room.session.chooserId)
+        throw new Error('Сначала ведущий выбирает, кто ходит первым')
+      if (!this.requireHost(current, room) && current.playerId !== room.session.chooserId)
+        throw new Error('Сейчас выбирает другой игрок')
       if (room.session.answeredQuestionIds.includes(message.questionId))
         throw new Error('Этот вопрос уже сыгран')
       const question = room.bank.questions.find(item => item.id === message.questionId)
@@ -234,6 +252,7 @@ export class RoomEngine {
 
       room.session.players = room.session.players.filter(player => player.id !== message.playerId)
       delete room.session.scores[message.playerId]
+      this.reassignChooser(room)
       room.submissions = room.submissions.filter(item => item.playerId !== message.playerId)
       this.maybeAutoReveal(room)
       for (const [key, client] of room.clients) {
@@ -447,9 +466,18 @@ export class RoomEngine {
     else
       room.phase = 'board'
 
+    const played = Boolean(room.currentQuestionId && room.session.answeredQuestionIds.includes(room.currentQuestionId))
+    if (played)
+      room.session.chooserId = nextChooserId(room.session.players, room.session.chooserId)
     room.currentQuestionId = null
     room.answers = []
     this.resetRound(room)
+  }
+
+  private reassignChooser(room: Room) {
+    if (room.session.chooserId && room.session.players.some(player => player.id === room.session.chooserId))
+      return
+    room.session.chooserId = room.session.players[0]?.id ?? null
   }
 
   private broadcast(room: Room, message: ServerMessage) {

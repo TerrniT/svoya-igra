@@ -46,6 +46,16 @@ export function usePlayState() {
       : localSession.answeredQuestionIds.value,
   )
 
+  const chooserId = computed(() =>
+    inRoom.value
+      ? room.snapshot.value?.session.chooserId ?? null
+      : localSession.chooserId.value,
+  )
+
+  const chooser = computed(() =>
+    players.value.find(player => player.id === chooserId.value) ?? null,
+  )
+
   const rankedPlayers = computed(() =>
     [...players.value]
       .map(player => ({
@@ -88,12 +98,28 @@ export function usePlayState() {
     return questionIds.every(id => answeredQuestionIds.value.includes(id))
   }
 
-  function startGame() {
+  function startGame(firstChooserId: string) {
     if (inRoom.value) {
-      room.start()
+      room.start(firstChooserId)
       return
     }
-    localSession.startGame()
+    localSession.startGame(firstChooserId)
+  }
+
+  function setChooser(playerId: string) {
+    if (inRoom.value) {
+      room.setChooser(playerId)
+      return
+    }
+    localSession.setChooser(playerId)
+  }
+
+  function canOpenQuestion() {
+    if (!chooserId.value)
+      return false
+    if (!inRoom.value)
+      return true
+    return isHost.value || meId.value === chooserId.value
   }
 
   function awardPoints(playerId: string, value: number, questionId: string) {
@@ -120,6 +146,8 @@ export function usePlayState() {
     players,
     scores,
     answeredQuestionIds,
+    chooserId,
+    chooser,
     rankedPlayers,
     categories,
     questions,
@@ -128,6 +156,8 @@ export function usePlayState() {
     isAnswered,
     isBoardComplete,
     startGame,
+    setChooser,
+    canOpenQuestion,
     awardPoints,
     skipQuestion,
     localSession,

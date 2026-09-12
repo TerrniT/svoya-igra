@@ -1,5 +1,6 @@
 import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
+import { nextChooserId, requireChooser } from '@/lib/chooser'
 import { createId } from '@/lib/ids'
 import type { GameSession, Player } from '@/lib/types'
 
@@ -11,6 +12,7 @@ function emptySession(): GameSession {
     scores: {},
     answeredQuestionIds: [],
     startedAt: null,
+    chooserId: null,
   }
 }
 
@@ -21,6 +23,7 @@ export function useGameSession() {
   const scores = computed(() => session.value.scores)
   const answeredQuestionIds = computed(() => session.value.answeredQuestionIds)
   const startedAt = computed(() => session.value.startedAt)
+  const chooserId = computed(() => session.value.chooserId)
 
   const rankedPlayers = computed(() =>
     [...session.value.players]
@@ -51,9 +54,11 @@ export function useGameSession() {
     const nextScores = { ...session.value.scores }
     delete nextScores[id]
     session.value.scores = nextScores
+    if (session.value.chooserId === id)
+      session.value.chooserId = session.value.players[0]?.id ?? null
   }
 
-  function startGame() {
+  function startGame(firstChooserId: string) {
     const nextScores: Record<string, number> = {}
     for (const player of session.value.players)
       nextScores[player.id] = 0
@@ -61,6 +66,15 @@ export function useGameSession() {
     session.value.scores = nextScores
     session.value.answeredQuestionIds = []
     session.value.startedAt = new Date().toISOString()
+    session.value.chooserId = requireChooser(session.value.players, firstChooserId)
+  }
+
+  function advanceChooser() {
+    session.value.chooserId = nextChooserId(session.value.players, session.value.chooserId)
+  }
+
+  function setChooser(playerId: string) {
+    session.value.chooserId = requireChooser(session.value.players, playerId)
   }
 
   function isAnswered(questionId: string) {
@@ -97,10 +111,13 @@ export function useGameSession() {
     scores,
     answeredQuestionIds,
     startedAt,
+    chooserId,
     rankedPlayers,
     addPlayer,
     removePlayer,
     startGame,
+    setChooser,
+    advanceChooser,
     isAnswered,
     awardPoints,
     skipQuestion,

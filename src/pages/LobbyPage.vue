@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { DoorOpenIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
+import FirstChooserDialog from '@/components/room/FirstChooserDialog.vue'
 import RoomInvite from '@/components/room/RoomInvite.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +34,8 @@ const hostName = ref('')
 const hostNameError = ref('')
 const localName = ref('')
 const localNameError = ref('')
+const pickerOpen = ref(false)
+const pickerMode = ref<'room' | 'local'>('room')
 
 const canStartRoom = computed(() =>
   inRoom.value && isHost.value && players.value.length > 0 && questions.value.length > 0,
@@ -59,7 +62,8 @@ function beginRoom() {
     toast.error('Нужны игроки и вопросы')
     return
   }
-  startGame()
+  pickerMode.value = 'room'
+  pickerOpen.value = true
 }
 
 function submitLocalPlayer() {
@@ -81,8 +85,14 @@ function beginLocal() {
     toast.error('В админке нет ни одного вопроса')
     return
   }
-  localSession.startGame()
-  router.push({ name: 'board' })
+  pickerMode.value = 'local'
+  pickerOpen.value = true
+}
+
+function confirmFirstChooser(playerId: string) {
+  startGame(playerId)
+  if (pickerMode.value === 'local')
+    router.push({ name: 'board' })
 }
 </script>
 
@@ -286,6 +296,12 @@ function beginLocal() {
         </Card>
       </TabsContent>
     </Tabs>
+
+    <FirstChooserDialog
+      v-model:open="pickerOpen"
+      :players="pickerMode === 'room' ? players : localSession.players.value"
+      @pick="confirmFirstChooser"
+    />
 
     <Alert v-if="!questions.length">
       <AlertTitle>Поле пустое</AlertTitle>

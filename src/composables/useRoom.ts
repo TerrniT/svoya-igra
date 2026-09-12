@@ -297,12 +297,16 @@ function useRoomBase() {
     send({ type: 'updateBank', bank })
   }
 
-  function start() {
-    send({ type: 'start' })
+  function start(firstChooserId: string) {
+    send({ type: 'start', firstChooserId })
   }
 
-  function playAgain() {
-    send({ type: 'playAgain' })
+  function playAgain(firstChooserId: string) {
+    send({ type: 'playAgain', firstChooserId })
+  }
+
+  function setChooser(playerId: string) {
+    send({ type: 'setChooser', playerId })
   }
 
   function openQuestion(questionId: string) {
@@ -354,6 +358,7 @@ function useRoomBase() {
     updateBank,
     start,
     playAgain,
+    setChooser,
     openQuestion,
     backToBoard,
     answer,

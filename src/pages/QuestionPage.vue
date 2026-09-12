@@ -24,6 +24,7 @@ const {
   getQuestion,
   awardPoints,
   skipQuestion,
+  localSession,
   isAnswered,
   isBoardComplete,
 } = usePlayState()
@@ -166,6 +167,7 @@ function awardSelected() {
     awardPoints(playerId, points, question.value.id)
   if (!selectedWinners.value.length)
     skipQuestion(question.value.id)
+  localSession.advanceChooser()
   localAwarded.value = true
   toast.success(selectedWinners.value.length ? 'Баллы начислены' : 'Никто не получил баллы')
   finishBoardIfNeeded()
@@ -175,8 +177,10 @@ function giveUp() {
   if (!question.value)
     return
   skipQuestion(question.value.id)
-  if (!inRoom.value)
+  if (!inRoom.value) {
+    localSession.advanceChooser()
     finishBoardIfNeeded()
+  }
 }
 
 function backToBoard() {

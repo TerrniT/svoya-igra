@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CrownIcon, PawPrintIcon } from '@lucide/vue'
+import FirstChooserDialog from '@/components/room/FirstChooserDialog.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,18 +15,25 @@ const {
   isHost,
   meId,
   room,
+  players,
   rankedPlayers,
   answeredQuestionIds,
   questions,
   startGame,
 } = usePlayState()
 
+const pickerOpen = ref(false)
+
 const winner = computed(() => rankedPlayers.value[0])
 const maxScore = computed(() => Math.max(1, ...rankedPlayers.value.map(player => player.score)))
 const answeredCount = computed(() => answeredQuestionIds.value.length)
 
 function playAgain() {
-  startGame()
+  pickerOpen.value = true
+}
+
+function confirmFirstChooser(playerId: string) {
+  startGame(playerId)
   if (!inRoom.value)
     router.push({ name: 'board' })
 }
@@ -103,5 +111,11 @@ function backToLobby() {
         </Button>
       </CardFooter>
     </Card>
+
+    <FirstChooserDialog
+      v-model:open="pickerOpen"
+      :players
+      @pick="confirmFirstChooser"
+    />
   </div>
 </template>
