@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { CheckIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -242,6 +243,9 @@ const waitingHint = computed(() => {
       <p v-if="inRoom && me" class="rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-sm">
         Вы в комнате как <span class="font-medium">{{ me.name }}</span>
       </p>
+      <p v-if="kind === 'single' && !revealed" class="text-muted-foreground text-sm">
+        Выберите один вариант.
+      </p>
       <p v-if="kind === 'multi' && !revealed" class="text-muted-foreground text-sm">
         Отметьте все верные варианты. Частичный ответ даёт часть баллов.
       </p>
@@ -255,16 +259,29 @@ const waitingHint = computed(() => {
       </div>
 
       <template v-else-if="kind !== 'free'">
-        <div class="grid gap-3">
+        <div
+          class="grid gap-3"
+          :role="kind === 'single' ? 'radiogroup' : 'group'"
+          :aria-label="kind === 'single' ? 'Один вариант ответа' : 'Несколько вариантов ответа'"
+        >
           <button
             v-for="answer in shuffledAnswers"
             :key="answer.id"
             type="button"
+            :role="kind === 'single' ? 'radio' : 'checkbox'"
+            :aria-checked="pickedIds.includes(answer.id)"
             :disabled="!canAnswer"
-            :class="cn('answer-btn', pickedIds.includes(answer.id) && 'answer-btn-picked')"
+            :class="cn(
+              'answer-btn',
+              kind === 'multi' ? 'answer-btn-multi' : 'answer-btn-single',
+              pickedIds.includes(answer.id) && 'answer-btn-picked',
+            )"
             @click="togglePick(answer.id)"
           >
-            {{ answer.text }}
+            <span class="answer-btn-mark" aria-hidden="true">
+              <CheckIcon v-if="kind === 'multi'" class="answer-btn-tick" />
+            </span>
+            <span>{{ answer.text }}</span>
           </button>
         </div>
         <Button
