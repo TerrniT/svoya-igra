@@ -47,10 +47,10 @@ watch(() => room.lastNotice.value, (notice) => {
   if (!notice)
     return
 
-  if (notice.kind === 'correct')
-    toast.success(`${notice.playerName ?? 'Игрок'} +${notice.value ?? 0}`)
-  if (notice.kind === 'wrong')
-    toast.error('Неверно. Можно попробовать ещё раз.')
+  if (notice.kind === 'revealed')
+    toast.message('Все ответы на столе')
+  if (notice.kind === 'awarded')
+    toast.success(notice.value ? `Ведущий начислил по ${notice.value}` : 'Очки начислены')
   if (notice.kind === 'skip')
     toast.message('Вопрос сдали без баллов')
   if (notice.kind === 'closed') {

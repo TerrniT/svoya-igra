@@ -313,8 +313,16 @@ function useRoomBase() {
     send({ type: 'backToBoard' })
   }
 
-  function answer(questionId: string, answerId: string) {
-    send({ type: 'answer', questionId, answerId })
+  function answer(questionId: string, input: { answerIds?: string[], text?: string }) {
+    send({ type: 'answer', questionId, answerIds: input.answerIds, text: input.text })
+  }
+
+  function reveal() {
+    send({ type: 'reveal' })
+  }
+
+  function awardFree(questionId: string, playerIds: string[]) {
+    send({ type: 'awardFree', questionId, playerIds })
   }
 
   function skip(questionId: string) {
@@ -349,6 +357,8 @@ function useRoomBase() {
     openQuestion,
     backToBoard,
     answer,
+    reveal,
+    awardFree,
     skip,
     kick,
   }

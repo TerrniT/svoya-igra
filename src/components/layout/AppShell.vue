@@ -3,14 +3,41 @@ import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 import { Button } from '@/components/ui/button'
 import { usePlayState } from '@/composables/usePlayState'
+import { expectedRespondents } from '@/lib/question-round'
 import { cn } from '@/lib/utils'
 
 const route = useRoute()
-const { rankedPlayers, inRoom, canEditBank, meId, me, room } = usePlayState()
+const { rankedPlayers, inRoom, canEditBank, meId, me, room, getQuestion } = usePlayState()
 
+const onQuestion = computed(() => route.name === 'question')
 const showScores = computed(() =>
-  route.name === 'board' || route.name === 'question' || route.name === 'results',
+  route.name === 'board' || route.name === 'results' || (route.name === 'question' && !inRoom.value),
 )
+
+const questionStatuses = computed(() => {
+  if (!onQuestion.value || !inRoom.value)
+    return []
+
+  const snapshot = room.snapshot.value
+  const question = snapshot?.currentQuestionId ? getQuestion(snapshot.currentQuestionId) : undefined
+  if (!question)
+    return []
+
+  const submitted = new Set((snapshot?.submissions ?? []).map(item => item.playerId))
+  const respondents = expectedRespondents(question, snapshot?.session.players ?? [])
+  const extras = (snapshot?.session.players ?? []).filter((player) => {
+    if (respondents.some(item => item.id === player.id))
+      return false
+    return submitted.has(player.id)
+  })
+
+  return [...respondents, ...extras].map(player => ({
+    id: player.id,
+    name: player.name,
+    mine: player.id === meId.value,
+    done: submitted.has(player.id),
+  }))
+})
 </script>
 
 <template>
@@ -51,7 +78,26 @@ const showScores = computed(() =>
         Вы в игре как <span class="text-foreground font-medium">{{ me.name }}</span>
       </p>
 
-      <div v-if="showScores && rankedPlayers.length" class="border-t border-border/50 bg-card/40">
+      <div v-if="onQuestion && inRoom && questionStatuses.length" class="border-t border-border/50 bg-card/40">
+        <div class="scores-rail mx-auto max-w-7xl px-3 py-2 sm:px-6">
+          <div
+            v-for="player in questionStatuses"
+            :key="player.id"
+            :class="cn(
+              'score-chip',
+              player.mine && 'score-chip-me',
+              player.done ? 'status-chip-done' : 'status-chip-thinking',
+            )"
+          >
+            <span :class="cn('status-dot', player.done && 'status-dot-done')" aria-hidden="true" />
+            <span class="truncate font-medium">{{ player.name }}</span>
+            <span v-if="player.mine" class="text-primary text-[0.65rem] tracking-[0.16em] uppercase">Вы</span>
+            <span class="text-xs tracking-[0.12em] uppercase">{{ player.done ? 'ответил' : 'думает' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-else-if="showScores && rankedPlayers.length" class="border-t border-border/50 bg-card/40">
         <div class="scores-rail mx-auto max-w-7xl px-3 py-2 sm:px-6">
           <div
             v-for="player in rankedPlayers"

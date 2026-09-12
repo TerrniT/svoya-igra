@@ -163,6 +163,65 @@
   box-shadow: inset 0 0 0 1px oklch(0.78 0.155 78 / 0.28);
 }
 
+.status-chip-thinking {
+  opacity: 0.82;
+}
+
+.status-chip-done {
+  border-color: oklch(0.78 0.155 78 / 0.55);
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: oklch(0.72 0.04 80 / 0.7);
+  box-shadow: 0 0 0 0 oklch(0.78 0.155 78 / 0.45);
+  animation: status-pulse 1.4s ease-out infinite;
+}
+
+.status-dot-done {
+  background: oklch(0.78 0.155 78);
+  animation: none;
+}
+
+@keyframes status-pulse {
+  0% { box-shadow: 0 0 0 0 oklch(0.78 0.155 78 / 0.45); }
+  70% { box-shadow: 0 0 0 0.45rem oklch(0.78 0.155 78 / 0); }
+  100% { box-shadow: 0 0 0 0 oklch(0.78 0.155 78 / 0); }
+}
+
+.answer-btn-picked {
+  border-color: oklch(0.78 0.155 78 / 0.85);
+  background: oklch(0.36 0.08 70 / 0.4);
+}
+
+.reveal-correct {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+  border-radius: 1.15rem;
+  border: 1px solid oklch(0.78 0.155 78 / 0.55);
+  background:
+    radial-gradient(120% 90% at 50% 0%, oklch(0.42 0.09 70 / 0.4), transparent 55%),
+    oklch(0.2 0.03 48 / 0.92);
+  box-shadow: 0 16px 36px oklch(0.1 0.02 40 / 0.35);
+}
+
+.player-answer-card {
+  padding: 0.95rem 1rem;
+  border-radius: 0.95rem;
+  border: 1px solid oklch(0.78 0.155 78 / 0.22);
+  background: oklch(0.2 0.03 48 / 0.78);
+}
+
+.player-answer-card-pick {
+  border-color: oklch(0.78 0.155 78 / 0.8);
+  background: oklch(0.36 0.08 70 / 0.32);
+}
+
 .scores-rail {
   display: flex;
   gap: 0.5rem;
@@ -344,6 +403,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .status-dot {
+    animation: none;
+  }
+
   [data-slot="button"],
   .answer-btn,
   .value-cell {

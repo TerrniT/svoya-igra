@@ -2,9 +2,10 @@ import { computed } from 'vue'
 import { useLocalStorage } from '@vueuse/core'
 import { createId } from '@/lib/ids'
 import { createSeedBank } from '@/lib/seed'
+import { questionKind } from '@/lib/question-round'
 import type { Category, Question, QuestionValue, QuizBank } from '@/lib/types'
 
-const STORAGE_KEY = 'svoya-igra:quiz-bank'
+const STORAGE_KEY = 'svoya-igra:quiz-bank:v2'
 
 export function useQuizBank() {
   const bank = useLocalStorage<QuizBank>(STORAGE_KEY, createSeedBank)
@@ -52,11 +53,25 @@ export function useQuizBank() {
     category.name = trimmed
   }
 
+  function writeBank(next: QuizBank) {
+    bank.value = {
+      categories: [...next.categories]
+        .sort((left, right) => left.order - right.order)
+        .map((category, index) => ({ ...category, order: index })),
+      questions: next.questions.map(question => ({
+        ...question,
+        kind: questionKind(question),
+        answers: question.answers.map(answer => ({ ...answer })),
+      })),
+    }
+  }
+
   function removeCategory(id: string) {
-    bank.value.categories = bank.value.categories.filter(item => item.id !== id)
-    bank.value.questions = bank.value.questions.filter(item => item.categoryId !== id)
-    bank.value.categories.forEach((item, index) => {
-      item.order = index
+    writeBank({
+      categories: bank.value.categories
+        .filter(item => item.id !== id)
+        .sort((left, right) => left.order - right.order),
+      questions: bank.value.questions.filter(item => item.categoryId !== id),
     })
   }
 
@@ -95,6 +110,7 @@ export function useQuizBank() {
       existing.categoryId = input.categoryId
       existing.value = input.value
       existing.text = input.text
+      existing.kind = input.kind
       existing.answers = input.answers
       return existing
     }
@@ -104,6 +120,7 @@ export function useQuizBank() {
       categoryId: input.categoryId,
       value: input.value,
       text: input.text,
+      kind: input.kind,
       answers: input.answers,
     }
 
@@ -112,7 +129,18 @@ export function useQuizBank() {
   }
 
   function removeQuestion(id: string) {
-    bank.value.questions = bank.value.questions.filter(item => item.id !== id)
+    writeBank({
+      categories: bank.value.categories,
+      questions: bank.value.questions.filter(item => item.id !== id),
+    })
+  }
+
+  function replaceBank(next: QuizBank) {
+    writeBank(next)
+  }
+
+  function resetToSeed() {
+    writeBank(createSeedBank())
   }
 
   function getBank(): QuizBank {
@@ -121,6 +149,8 @@ export function useQuizBank() {
 
   return {
     getBank,
+    replaceBank,
+    resetToSeed,
     categories,
     questions,
     questionAt,

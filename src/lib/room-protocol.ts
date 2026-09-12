@@ -18,11 +18,21 @@ export interface RoomSession {
   startedAt: string | null
 }
 
+export interface PlayerSubmission {
+  playerId: string
+  answerIds: string[]
+  text: string
+}
+
 export interface RoomSnapshot {
   code: string
   phase: RoomPhase
   currentQuestionId: string | null
   answers: Answer[]
+  submissions: PlayerSubmission[]
+  revealed: boolean
+  awarded: boolean
+  roundScores: Record<string, number>
   bank: QuizBank
   session: RoomSession
 }
@@ -35,7 +45,9 @@ export type ClientMessage =
   | { type: 'start' }
   | { type: 'openQuestion', questionId: string }
   | { type: 'backToBoard' }
-  | { type: 'answer', questionId: string, answerId: string }
+  | { type: 'answer', questionId: string, answerIds?: string[], text?: string }
+  | { type: 'reveal' }
+  | { type: 'awardFree', questionId: string, playerIds: string[] }
   | { type: 'skip', questionId: string }
   | { type: 'playAgain' }
   | { type: 'kick', playerId: string }
@@ -43,7 +55,7 @@ export type ClientMessage =
 export type ServerMessage =
   | { type: 'hello', playerId: string, role: RoomRole, snapshot: RoomSnapshot }
   | { type: 'state', snapshot: RoomSnapshot }
-  | { type: 'notice', kind: 'correct' | 'wrong' | 'skip' | 'closed', playerName?: string, value?: number }
+  | { type: 'notice', kind: 'revealed' | 'awarded' | 'skip' | 'closed', playerName?: string, value?: number }
   | { type: 'error', message: string }
 
 export function emptyRoomSession(): RoomSession {

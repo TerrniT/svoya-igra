@@ -1,7 +1,8 @@
 import type { Answer, QuizBank } from '@/lib/types'
-import type { ClientMessage, RoomPhase, RoomPlayer, RoomSession, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
+import type { ClientMessage, PlayerSubmission, RoomPhase, RoomPlayer, RoomSession, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
 import { emptyRoomSession } from '@/lib/room-protocol'
 import { createId } from '@/lib/ids'
+import { everyoneSubmitted, questionKind, scoreSubmission } from '@/lib/question-round'
 
 export interface WireClient {
   key: string
@@ -17,6 +18,10 @@ export interface HostRoomState {
   phase: RoomPhase
   currentQuestionId: string | null
   answers: Answer[]
+  submissions: PlayerSubmission[]
+  revealed: boolean
+  awarded: boolean
+  roundScores: Record<string, number>
 }
 
 interface Client extends WireClient {
@@ -51,6 +56,10 @@ export class RoomEngine {
       phase: 'lobby',
       currentQuestionId: null,
       answers: [],
+      submissions: [],
+      revealed: false,
+      awarded: false,
+      roundScores: {},
       clients: new Map(),
     }
     const player = addPlayer(room, name.trim(), deviceId, true)
@@ -72,6 +81,10 @@ export class RoomEngine {
   hydrate(state: HostRoomState, deviceId: string, host: WireClient): Client {
     const room: Room = {
       ...cloneState(state),
+      submissions: state.submissions ?? [],
+      revealed: state.revealed ?? false,
+      awarded: state.awarded ?? false,
+      roundScores: state.roundScores ?? {},
       clients: new Map(),
     }
     this.room = room
@@ -168,6 +181,7 @@ export class RoomEngine {
       room.phase = 'board'
       room.currentQuestionId = null
       room.answers = []
+      this.resetRound(room)
       this.broadcastState(room)
       this.persist()
       return current
@@ -184,7 +198,8 @@ export class RoomEngine {
 
       room.phase = 'question'
       room.currentQuestionId = question.id
-      room.answers = shuffle(question.answers)
+      room.answers = questionKind(question) === 'free' ? [] : shuffle(question.answers)
+      this.resetRound(room)
       this.broadcastState(room)
       this.persist()
       return current
@@ -193,9 +208,7 @@ export class RoomEngine {
     if (message.type === 'backToBoard') {
       if (!this.requireHost(current, room))
         throw new Error('Только ведущий возвращает поле')
-      room.phase = 'board'
-      room.currentQuestionId = null
-      room.answers = []
+      this.finishIfComplete(room)
       this.broadcastState(room)
       this.persist()
       return current
@@ -221,6 +234,8 @@ export class RoomEngine {
 
       room.session.players = room.session.players.filter(player => player.id !== message.playerId)
       delete room.session.scores[message.playerId]
+      room.submissions = room.submissions.filter(item => item.playerId !== message.playerId)
+      this.maybeAutoReveal(room)
       for (const [key, client] of room.clients) {
         if (client.playerId === message.playerId) {
           client.send({ type: 'error', message: 'Вас удалили из комнаты' })
@@ -236,39 +251,91 @@ export class RoomEngine {
     if (message.type === 'answer') {
       if (room.phase !== 'question' || room.currentQuestionId !== message.questionId)
         throw new Error('Сейчас нет этого вопроса')
-      if (room.session.answeredQuestionIds.includes(message.questionId))
-        throw new Error('Вопрос уже закрыт')
+      if (room.revealed)
+        throw new Error('Ответы уже вскрыты')
 
       const question = room.bank.questions.find(item => item.id === message.questionId)
-      const answer = question?.answers.find(item => item.id === message.answerId)
-      if (!question || !answer)
-        throw new Error('Ответ не найден')
+      if (!question)
+        throw new Error('Вопрос не найден')
 
       const player = room.session.players.find(item => item.id === current.playerId)
       if (!player)
         throw new Error('Игрок не найден')
+      if (room.submissions.some(item => item.playerId === player.id))
+        throw new Error('Вы уже ответили')
 
-      if (!answer.isCorrect) {
-        current.send({ type: 'notice', kind: 'wrong' })
-        return current
+      const kind = questionKind(question)
+      const answerIds = [...new Set(message.answerIds ?? [])]
+      const text = message.text?.trim() ?? ''
+
+      if (kind === 'free') {
+        if (player.isHost)
+          throw new Error('Ведущий оценивает ответы, а не пишет свой')
+        if (!text)
+          throw new Error('Введите ответ')
+      }
+      else {
+        if (!answerIds.length)
+          throw new Error('Выберите вариант')
+        if (kind === 'single' && answerIds.length !== 1)
+          throw new Error('Выберите один вариант')
+        if (answerIds.some(id => !question.answers.some(answer => answer.id === id)))
+          throw new Error('Ответ не найден')
       }
 
-      const code = room.code
-      const questionId = question.id
-      room.session.scores[player.id] = (room.session.scores[player.id] ?? 0) + question.value
-      room.session.answeredQuestionIds.push(question.id)
-      this.broadcast(room, { type: 'notice', kind: 'correct', playerName: player.name, value: question.value })
+      room.submissions.push({
+        playerId: player.id,
+        answerIds: kind === 'free' ? [] : answerIds,
+        text: kind === 'free' ? text : '',
+      })
+
+      if (everyoneSubmitted(question, room.session.players, room.submissions))
+        this.revealRound(room)
+
       this.broadcastState(room)
       this.persist()
+      return current
+    }
 
-      window.setTimeout(() => {
-        const live = this.room
-        if (!live || live.code !== code || live.currentQuestionId !== questionId)
-          return
-        this.finishIfComplete(live)
-        this.broadcastState(live)
-        this.persist()
-      }, 1800)
+    if (message.type === 'reveal') {
+      if (!this.requireHost(current, room))
+        throw new Error('Вскрыть ответы может только ведущий')
+      if (room.phase !== 'question' || !room.currentQuestionId)
+        throw new Error('Сейчас нет открытого вопроса')
+      if (!room.revealed)
+        this.revealRound(room)
+      this.broadcastState(room)
+      this.persist()
+      return current
+    }
+
+    if (message.type === 'awardFree') {
+      if (!this.requireHost(current, room))
+        throw new Error('Очки начисляет ведущий')
+      if (room.phase !== 'question' || room.currentQuestionId !== message.questionId)
+        throw new Error('Сейчас нет этого вопроса')
+      if (!room.revealed)
+        throw new Error('Сначала дождитесь всех ответов')
+      if (room.awarded)
+        throw new Error('Очки уже начислены')
+
+      const question = room.bank.questions.find(item => item.id === message.questionId)
+      if (!question || questionKind(question) !== 'free')
+        throw new Error('Это не свободный вопрос')
+
+      const chosen = new Set(message.playerIds)
+      const scores: Record<string, number> = {}
+      for (const submission of room.submissions) {
+        if (!chosen.has(submission.playerId))
+          continue
+        scores[submission.playerId] = question.value
+        room.session.scores[submission.playerId] = (room.session.scores[submission.playerId] ?? 0) + question.value
+      }
+      room.roundScores = scores
+      room.awarded = true
+      this.broadcast(room, { type: 'notice', kind: 'awarded', value: question.value })
+      this.broadcastState(room)
+      this.persist()
       return current
     }
 
@@ -286,6 +353,7 @@ export class RoomEngine {
 
     room.clients.delete(key)
     setConnected(room, current.playerId, false)
+    this.maybeAutoReveal(room)
     this.broadcastState(room)
     this.persist()
   }
@@ -330,6 +398,48 @@ export class RoomEngine {
     return Boolean(client && client.role === 'host' && client.playerId === room.hostPlayerId)
   }
 
+  private resetRound(room: Room) {
+    room.submissions = []
+    room.revealed = false
+    room.awarded = false
+    room.roundScores = {}
+  }
+
+  private maybeAutoReveal(room: Room) {
+    if (room.phase !== 'question' || room.revealed || !room.currentQuestionId)
+      return
+    const question = room.bank.questions.find(item => item.id === room.currentQuestionId)
+    if (question && everyoneSubmitted(question, room.session.players, room.submissions))
+      this.revealRound(room)
+  }
+
+  private revealRound(room: Room) {
+    if (room.revealed)
+      return
+
+    const question = room.bank.questions.find(item => item.id === room.currentQuestionId)
+    room.revealed = true
+    if (!question)
+      return
+
+    if (!room.session.answeredQuestionIds.includes(question.id))
+      room.session.answeredQuestionIds.push(question.id)
+
+    if (questionKind(question) !== 'free') {
+      const scores: Record<string, number> = {}
+      for (const submission of room.submissions) {
+        const points = scoreSubmission(question, submission)
+        scores[submission.playerId] = points
+        if (points)
+          room.session.scores[submission.playerId] = (room.session.scores[submission.playerId] ?? 0) + points
+      }
+      room.roundScores = scores
+      room.awarded = true
+    }
+
+    this.broadcast(room, { type: 'notice', kind: 'revealed' })
+  }
+
   private finishIfComplete(room: Room) {
     const ids = room.bank.questions.map(question => question.id)
     if (ids.length > 0 && ids.every(id => room.session.answeredQuestionIds.includes(id)))
@@ -339,6 +449,7 @@ export class RoomEngine {
 
     room.currentQuestionId = null
     room.answers = []
+    this.resetRound(room)
   }
 
   private broadcast(room: Room, message: ServerMessage) {
@@ -364,6 +475,10 @@ export class RoomEngine {
       phase: this.room.phase,
       currentQuestionId: this.room.currentQuestionId,
       answers: this.room.answers,
+      submissions: this.room.submissions,
+      revealed: this.room.revealed,
+      awarded: this.room.awarded,
+      roundScores: this.room.roundScores,
     }))
   }
 }
@@ -377,7 +492,15 @@ function snapshot(room: Room): RoomSnapshot {
     code: room.code,
     phase: room.phase,
     currentQuestionId: room.currentQuestionId,
-    answers: room.answers,
+    answers: room.revealed
+      ? room.answers
+      : room.answers.map(answer => ({ ...answer, isCorrect: false })),
+    submissions: room.revealed
+      ? room.submissions
+      : room.submissions.map(item => ({ playerId: item.playerId, answerIds: [], text: '' })),
+    revealed: room.revealed,
+    awarded: room.awarded,
+    roundScores: room.revealed ? room.roundScores : {},
     bank: room.bank,
     session: room.session,
   })
