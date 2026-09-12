@@ -26,6 +26,8 @@ function useRoomBase() {
   const hosting = useSessionStorage(HOSTING_KEY, false)
 
   const connecting = ref(false)
+  const pendingRestore = ref(Boolean(hosting.value || lastCode.value))
+  const restoring = computed(() => pendingRestore.value && !snapshot.value)
   const linkReady = ref(false)
   const snapshot = ref<RoomSnapshot | null>(null)
   const playerId = ref<string | null>(null)
@@ -82,6 +84,7 @@ function useRoomBase() {
     playerId.value = null
     role.value = null
     lastCode.value = ''
+    pendingRestore.value = false
     persistHost(null)
   }
 
@@ -237,8 +240,19 @@ function useRoomBase() {
   }
 
   async function reconnect(allowGuest = true) {
-    if (hosting.value && hostState.value) {
-      error.value = ''
+    const shouldRestoreHost = Boolean(hosting.value && hostState.value)
+    const shouldRestoreGuest = Boolean(allowGuest && lastCode.value && !hosting.value)
+
+    if (!shouldRestoreHost && !shouldRestoreGuest) {
+      pendingRestore.value = false
+      return
+    }
+
+    pendingRestore.value = true
+    connecting.value = true
+    error.value = ''
+
+    if (shouldRestoreHost && hostState.value) {
       const saved = hostState.value
       await teardown()
       const token = session
@@ -255,22 +269,24 @@ function useRoomBase() {
           return
         await teardown()
         persistHost(null)
+        pendingRestore.value = false
         error.value = caught instanceof Error ? caught.message : 'Не удалось восстановить комнату'
+      }
+      finally {
+        if (token === session)
+          connecting.value = false
       }
       return
     }
 
-    if (!allowGuest || !lastCode.value || hosting.value)
-      return
-
-    error.value = ''
+    const code = lastCode.value
     await teardown()
     const token = session
 
     try {
-      await connectAsGuest(lastCode.value, {
+      await connectAsGuest(code, {
         type: 'reconnect',
-        code: lastCode.value,
+        code,
         deviceId: deviceId.value,
       }, token)
     }
@@ -278,7 +294,12 @@ function useRoomBase() {
       if (token !== session)
         return
       await teardown()
+      pendingRestore.value = false
       error.value = caught instanceof Error ? caught.message : 'Не удалось переподключиться'
+    }
+    finally {
+      if (token === session)
+        connecting.value = false
     }
   }
 
@@ -339,6 +360,7 @@ function useRoomBase() {
 
   return {
     connecting,
+    restoring,
     connected,
     snapshot,
     playerId,

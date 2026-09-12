@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { Loader2Icon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useQuizBank } from '@/composables/useQuizBank'
 import { useRoom } from '@/composables/useRoom'
 
@@ -76,4 +84,22 @@ watch(
 
 <template>
   <slot />
+
+  <Dialog :open="room.restoring.value" :modal="true">
+    <DialogContent
+      class="sm:max-w-sm"
+      :show-close-button="false"
+      @pointer-down-outside.prevent
+      @escape-key-down.prevent
+      @interact-outside.prevent
+    >
+      <DialogHeader class="items-center text-center">
+        <Loader2Icon class="text-primary size-10 animate-spin" />
+        <DialogTitle>Подключаемся к комнате</DialogTitle>
+        <DialogDescription>
+          {{ room.lastCode.value ? `Комната ${room.lastCode.value}. Подождите, восстанавливаем игру.` : 'Восстанавливаем прошлую сессию.' }}
+        </DialogDescription>
+      </DialogHeader>
+    </DialogContent>
+  </Dialog>
 </template>

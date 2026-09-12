@@ -437,6 +437,18 @@
   color: oklch(0.2 0.04 55);
 }
 
+.answer-group-locked {
+  pointer-events: none;
+}
+
+.answer-btn:disabled {
+  cursor: default;
+}
+
+.answer-btn:disabled:not(.answer-btn-picked) {
+  opacity: 0.55;
+}
+
 .answer-btn:active:not(:disabled) {
   border-bottom-width: 2px;
   transform: scaleY(0.96);

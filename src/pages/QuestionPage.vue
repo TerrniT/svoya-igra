@@ -50,14 +50,16 @@ const mySubmission = computed(() => submissions.value.find(item => item.playerId
 const shuffledAnswers = ref<Answer[]>([])
 const pickedIds = ref<string[]>([])
 const freeText = ref('')
+const submittedLocally = ref(false)
 const localRevealed = ref(false)
 const localAwarded = ref(false)
 const localPicks = ref<string[]>([])
 const selectedWinners = ref<string[]>([])
 
-watch(question, (next) => {
+watch(questionId, (id) => {
   pickedIds.value = []
   freeText.value = ''
+  submittedLocally.value = false
   localRevealed.value = false
   localAwarded.value = false
   localPicks.value = []
@@ -65,20 +67,18 @@ watch(question, (next) => {
   if (inRoom.value && snapshot.value?.answers.length)
     shuffledAnswers.value = snapshot.value.answers
   else
-    shuffledAnswers.value = next && kind.value !== 'free' ? shuffle(next.answers) : []
+    shuffledAnswers.value = question.value && kind.value !== 'free' ? shuffle(question.value.answers) : []
+
+  if (inRoom.value || !id)
+    return
+  if (!question.value || isAnswered(question.value.id))
+    router.replace({ name: 'board' })
 }, { immediate: true })
 
 watch(() => snapshot.value?.answers, (answers) => {
   if (inRoom.value && answers?.length)
     shuffledAnswers.value = answers
 })
-
-watch(question, (next) => {
-  if (inRoom.value || !questionId.value)
-    return
-  if (!next || isAnswered(next.id))
-    router.replace({ name: 'board' })
-}, { immediate: true })
 
 const correctLabel = computed(() => {
   if (!question.value)
@@ -88,7 +88,19 @@ const correctLabel = computed(() => {
   return correctAnswers(question.value).map(answer => answer.text).join(' · ') || '—'
 })
 
-const alreadySent = computed(() => Boolean(mySubmission.value) || revealed.value)
+const alreadySent = computed(() =>
+  submittedLocally.value || Boolean(mySubmission.value) || revealed.value,
+)
+
+const canAnswer = computed(() => {
+  if (alreadySent.value)
+    return false
+  if (!inRoom.value)
+    return true
+  if (kind.value === 'free' && isHost.value)
+    return false
+  return true
+})
 
 function finishBoardIfNeeded() {
   const ids = questions.value.map(item => item.id)
@@ -100,7 +112,7 @@ function finishBoardIfNeeded() {
 }
 
 function togglePick(id: string) {
-  if (alreadySent.value || !question.value)
+  if (!canAnswer.value || !question.value)
     return
   if (kind.value === 'single') {
     pickedIds.value = [id]
@@ -121,7 +133,13 @@ function submitAnswer() {
       return
     }
     if (inRoom.value) {
-      room.answer(question.value.id, { text: freeText.value.trim() })
+      submittedLocally.value = true
+      try {
+        room.answer(question.value.id, { text: freeText.value.trim() })
+      }
+      catch {
+        submittedLocally.value = false
+      }
       return
     }
     localRevealed.value = true
@@ -134,7 +152,13 @@ function submitAnswer() {
   }
 
   if (inRoom.value) {
-    room.answer(question.value.id, { answerIds: pickedIds.value })
+    submittedLocally.value = true
+    try {
+      room.answer(question.value.id, { answerIds: pickedIds.value })
+    }
+    catch {
+      submittedLocally.value = false
+    }
     return
   }
 
@@ -214,20 +238,10 @@ const revealRows = computed(() => {
   }]
 })
 
-const canAnswer = computed(() => {
-  if (revealed.value)
-    return false
-  if (!inRoom.value)
-    return true
-  if (kind.value === 'free' && isHost.value)
-    return false
-  return !mySubmission.value
-})
-
 const waitingHint = computed(() => {
   if (!inRoom.value || revealed.value)
     return ''
-  if (mySubmission.value)
+  if (alreadySent.value)
     return 'Ответ принят. Ждём остальных.'
   if (kind.value === 'free' && isHost.value)
     return 'Игроки пишут ответы. Когда все будут готовы, можно вскрыть.'
@@ -257,16 +271,24 @@ const waitingHint = computed(() => {
     </div>
 
     <div v-if="!revealed" class="flex flex-col gap-3">
-      <div v-if="kind === 'free' && canAnswer" class="flex flex-col gap-3">
-        <Textarea v-model="freeText" rows="4" placeholder="Ваш ответ" />
-        <Button class="w-full sm:w-auto" @click="submitAnswer">Ответить</Button>
+      <div v-if="kind === 'free' && (canAnswer || alreadySent)" class="flex flex-col gap-3">
+        <Textarea
+          v-model="freeText"
+          rows="4"
+          placeholder="Ваш ответ"
+          :disabled="!canAnswer"
+          :readonly="!canAnswer"
+        />
+        <Button v-if="canAnswer" class="w-full sm:w-auto" @click="submitAnswer">Ответить</Button>
       </div>
 
       <template v-else-if="kind !== 'free'">
         <div
           class="grid gap-3"
           :role="kind === 'single' ? 'radiogroup' : 'group'"
+          :aria-disabled="alreadySent ? true : undefined"
           :aria-label="kind === 'single' ? 'Один вариант ответа' : 'Несколько вариантов ответа'"
+          :class="alreadySent && 'answer-group-locked'"
         >
           <button
             v-for="answer in shuffledAnswers"
@@ -274,7 +296,7 @@ const waitingHint = computed(() => {
             type="button"
             :role="kind === 'single' ? 'radio' : 'checkbox'"
             :aria-checked="pickedIds.includes(answer.id)"
-            :disabled="!canAnswer"
+            :disabled="alreadySent"
             :class="cn(
               'answer-btn',
               kind === 'multi' ? 'answer-btn-multi' : 'answer-btn-single',
