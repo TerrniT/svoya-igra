@@ -5,7 +5,6 @@ import {
   RoomLink,
   claimHostRoom,
   openGuestRoom,
-  openHostRoom,
 } from '@/lib/peer-room'
 import { RoomEngine, type HostRoomState, type WireClient } from '@/lib/room-engine'
 import type { ClientMessage, RoomRole, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
@@ -16,8 +15,16 @@ function abortIfStale(token: number, session: number) {
     throw Object.assign(new Error('aborted'), { name: 'RoomAbortError' })
 }
 
+function isRoomMissing(message: string) {
+  return message.includes('не найдена') || message.includes('Нет связи с комнатой')
+}
+
 const HOST_STATE_KEY = 'svoya-igra:host-room'
 const HOSTING_KEY = 'svoya-igra:hosting'
+
+function wasOnPlayRoute() {
+  return typeof location !== 'undefined' && location.pathname.startsWith('/game')
+}
 
 function useRoomBase() {
   const deviceId = useSessionStorage('svoya-igra:device-id', createId('device'))
@@ -25,11 +32,19 @@ function useRoomBase() {
   const hostState = useSessionStorage<HostRoomState | null>(HOST_STATE_KEY, null)
   const hosting = useSessionStorage(HOSTING_KEY, false)
 
+  if (hosting.value || hostState.value) {
+    hostState.value = null
+    hosting.value = false
+    lastCode.value = ''
+  }
+
   const connecting = ref(false)
-  const pendingRestore = ref(Boolean(hosting.value || lastCode.value))
-  const restoring = computed(() => pendingRestore.value && !snapshot.value)
-  const linkReady = ref(false)
+  const pendingRestore = ref(Boolean(lastCode.value && wasOnPlayRoute()))
+  const restoreError = ref('')
   const snapshot = ref<RoomSnapshot | null>(null)
+  const restoring = computed(() => pendingRestore.value && !snapshot.value && !restoreError.value)
+  const blockingRestore = computed(() => restoring.value || Boolean(restoreError.value))
+  const linkReady = ref(false)
   const playerId = ref<string | null>(null)
   const role = ref<RoomRole | null>(null)
   const error = ref('')
@@ -64,8 +79,10 @@ function useRoomBase() {
 
     if (message.type === 'notice') {
       lastNotice.value = message
-      if (message.kind === 'closed')
+      if (message.kind === 'closed') {
         forgetRoom()
+        restoreError.value = 'Такой комнаты нет'
+      }
       return
     }
 
@@ -86,6 +103,17 @@ function useRoomBase() {
     lastCode.value = ''
     pendingRestore.value = false
     persistHost(null)
+  }
+
+  function markRoomMissing() {
+    forgetRoom()
+    restoreError.value = 'Такой комнаты нет'
+  }
+
+  function dismissRestoreError() {
+    restoreError.value = ''
+    pendingRestore.value = false
+    forgetRoom()
   }
 
   async function teardown() {
@@ -128,12 +156,7 @@ function useRoomBase() {
       linkReady.value = false
       if (disposed || hosting.value)
         return
-      if (snapshot.value)
-        error.value = 'Связь с комнатой потеряна'
-      window.setTimeout(() => {
-        if (!disposed && !connecting.value && lastCode.value && !hosting.value && !linkReady.value)
-          void reconnect()
-      }, 800)
+      markRoomMissing()
     })
   }
 
@@ -231,6 +254,8 @@ function useRoomBase() {
         return
       await teardown()
       error.value = caught instanceof Error ? caught.message : 'Не удалось войти в комнату'
+      if (isRoomMissing(error.value))
+        restoreError.value = 'Такой комнаты нет'
       throw caught instanceof Error ? caught : new Error(error.value)
     }
     finally {
@@ -240,46 +265,16 @@ function useRoomBase() {
   }
 
   async function reconnect(allowGuest = true) {
-    const shouldRestoreHost = Boolean(hosting.value && hostState.value)
-    const shouldRestoreGuest = Boolean(allowGuest && lastCode.value && !hosting.value)
-
-    if (!shouldRestoreHost && !shouldRestoreGuest) {
+    if (!allowGuest || !lastCode.value || hosting.value) {
       pendingRestore.value = false
       return
     }
 
+    const code = lastCode.value
     pendingRestore.value = true
+    restoreError.value = ''
     connecting.value = true
     error.value = ''
-
-    if (shouldRestoreHost && hostState.value) {
-      const saved = hostState.value
-      await teardown()
-      const token = session
-      try {
-        const next = openHostRoom(saved.code)
-        if (token !== session) {
-          await next.leave()
-          return
-        }
-        connectAsHost(next, saved)
-      }
-      catch (caught) {
-        if (token !== session)
-          return
-        await teardown()
-        persistHost(null)
-        pendingRestore.value = false
-        error.value = caught instanceof Error ? caught.message : 'Не удалось восстановить комнату'
-      }
-      finally {
-        if (token === session)
-          connecting.value = false
-      }
-      return
-    }
-
-    const code = lastCode.value
     await teardown()
     const token = session
 
@@ -296,6 +291,7 @@ function useRoomBase() {
       await teardown()
       pendingRestore.value = false
       error.value = caught instanceof Error ? caught.message : 'Не удалось переподключиться'
+      markRoomMissing()
     }
     finally {
       if (token === session)
@@ -361,6 +357,9 @@ function useRoomBase() {
   return {
     connecting,
     restoring,
+    blockingRestore,
+    restoreError,
+    dismissRestoreError,
     connected,
     snapshot,
     playerId,

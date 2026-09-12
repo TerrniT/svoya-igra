@@ -10,7 +10,7 @@ const room = useRoom()
 <template>
   <RoomSync>
     <AppShell>
-      <RouterView v-if="!room.restoring.value" />
+      <RouterView v-if="!room.blockingRestore.value" />
     </AppShell>
     <Toaster position="top-center" rich-colors />
   </RoomSync>

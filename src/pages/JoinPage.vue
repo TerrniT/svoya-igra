@@ -41,6 +41,8 @@ async function join() {
     router.replace({ name: 'lobby' })
   }
   catch (error) {
+    if (room.restoreError.value)
+      return
     toast.error(error instanceof Error ? error.message : 'Не удалось войти')
   }
 }

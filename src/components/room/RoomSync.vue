@@ -3,10 +3,12 @@ import { onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Loader2Icon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -51,6 +53,16 @@ watch(
   },
 )
 
+watch(
+  () => [room.snapshot.value, room.restoring.value, room.restoreError.value, room.lastCode.value] as const,
+  ([snapshot, restoring, restoreError, lastCode]) => {
+    if (snapshot || restoring || restoreError)
+      return
+    if (!lastCode && (route.name === 'board' || route.name === 'question' || route.name === 'results'))
+      router.replace({ name: 'lobby' })
+  },
+)
+
 watch(() => room.lastNotice.value, (notice) => {
   if (!notice)
     return
@@ -61,14 +73,12 @@ watch(() => room.lastNotice.value, (notice) => {
     toast.success(notice.value ? `Ведущий начислил по ${notice.value}` : 'Очки начислены')
   if (notice.kind === 'skip')
     toast.message('Вопрос сдали без баллов')
-  if (notice.kind === 'closed') {
-    toast.error('Комната закрыта')
+  if (notice.kind === 'closed')
     router.replace({ name: 'lobby' })
-  }
 })
 
 watch(() => room.error.value, (message) => {
-  if (message)
+  if (message && !room.restoreError.value)
     toast.error(message)
 })
 
@@ -80,26 +90,42 @@ watch(
     room.updateBank(getBank())
   },
 )
+
+function closeMissingRoom() {
+  room.dismissRestoreError()
+  router.replace({ name: 'lobby' })
+}
 </script>
 
 <template>
   <slot />
 
-  <Dialog :open="room.restoring.value" :modal="true">
+  <Dialog
+    :open="room.restoring.value || Boolean(room.restoreError.value)"
+    :modal="true"
+    @update:open="open => { if (!open && room.restoreError.value) closeMissingRoom() }"
+  >
     <DialogContent
       class="sm:max-w-sm"
-      :show-close-button="false"
+      :show-close-button="Boolean(room.restoreError.value)"
       @pointer-down-outside.prevent
       @escape-key-down.prevent
       @interact-outside.prevent
     >
       <DialogHeader class="items-center text-center">
-        <Loader2Icon class="text-primary size-10 animate-spin" />
-        <DialogTitle>Подключаемся к комнате</DialogTitle>
+        <Loader2Icon v-if="room.restoring.value" class="text-primary size-10 animate-spin" />
+        <DialogTitle>
+          {{ room.restoreError.value || 'Подключаемся к комнате' }}
+        </DialogTitle>
         <DialogDescription>
-          {{ room.lastCode.value ? `Комната ${room.lastCode.value}. Подождите, восстанавливаем игру.` : 'Восстанавливаем прошлую сессию.' }}
+          {{ room.restoreError.value
+            ? 'Ведущий закрыл вкладку или комната уже не существует. Создайте новую или войдите по свежему коду.'
+            : (room.lastCode.value ? `Комната ${room.lastCode.value}. Подождите, восстанавливаем игру.` : 'Ищем комнату ведущего.') }}
         </DialogDescription>
       </DialogHeader>
+      <DialogFooter v-if="room.restoreError.value" class="sm:justify-center">
+        <Button class="w-full" @click="closeMissingRoom">К игрокам</Button>
+      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
