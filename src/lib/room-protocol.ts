@@ -23,6 +23,7 @@ export interface PlayerSubmission {
   playerId: string
   answerIds: string[]
   text: string
+  skipped?: boolean
 }
 
 export interface RoomSnapshot {
@@ -47,7 +48,7 @@ export type ClientMessage =
   | { type: 'setChooser', playerId: string }
   | { type: 'openQuestion', questionId: string }
   | { type: 'backToBoard' }
-  | { type: 'answer', questionId: string, answerIds?: string[], text?: string }
+  | { type: 'answer', questionId: string, answerIds?: string[], text?: string, skipped?: boolean }
   | { type: 'reveal' }
   | { type: 'awardFree', questionId: string, playerIds: string[] }
   | { type: 'skip', questionId: string }

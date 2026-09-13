@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import { useGameSession } from '@/composables/useGameSession'
 import { useQuizBank } from '@/composables/useQuizBank'
 import { useRoom } from '@/composables/useRoom'
+import { playingPlayers } from '@/lib/chooser'
 import type { QuestionValue } from '@/lib/types'
 
 export function usePlayState() {
@@ -56,14 +57,34 @@ export function usePlayState() {
     players.value.find(player => player.id === chooserId.value) ?? null,
   )
 
+  const contestants = computed(() => playingPlayers(players.value))
+
   const rankedPlayers = computed(() =>
-    [...players.value]
+    [...contestants.value]
       .map(player => ({
         ...player,
         score: scores.value[player.id] ?? 0,
       }))
       .sort((left, right) => right.score - left.score),
   )
+
+  const rosterPlayers = computed(() => {
+    const hosts = players.value
+      .filter(player => player.isHost)
+      .map(player => ({
+        ...player,
+        score: 0,
+        scoring: false,
+      }))
+
+    return [
+      ...rankedPlayers.value.map(player => ({
+        ...player,
+        scoring: true,
+      })),
+      ...hosts,
+    ]
+  })
 
   const categories = computed(() => {
     const list = inRoom.value
@@ -144,11 +165,13 @@ export function usePlayState() {
     meId,
     me,
     players,
+    contestants,
     scores,
     answeredQuestionIds,
     chooserId,
     chooser,
     rankedPlayers,
+    rosterPlayers,
     categories,
     questions,
     questionAt,

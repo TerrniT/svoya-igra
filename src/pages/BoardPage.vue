@@ -14,6 +14,7 @@ const {
   meId,
   room,
   players,
+  rosterPlayers,
   chooser,
   chooserId,
   categories,
@@ -92,6 +93,22 @@ if (finished.value && !inRoom.value)
       <p class="text-muted-foreground max-w-2xl text-sm sm:text-base">
         {{ hint }}
       </p>
+    </div>
+
+    <div v-if="rosterPlayers.length" class="board-players" aria-label="Игроки">
+      <div
+        v-for="player in rosterPlayers"
+        :key="player.id"
+        :class="cn(
+          'board-player',
+          player.id === meId && 'board-player-me',
+          player.id === chooserId && 'board-player-turn',
+        )"
+      >
+        <span class="truncate font-medium">{{ player.name }}</span>
+        <span v-if="player.id === chooserId" class="chooser-now">ходит</span>
+        <span v-else-if="player.isHost" class="text-muted-foreground text-[0.65rem] tracking-[0.16em] uppercase">ведущий</span>
+      </div>
     </div>
 
     <Empty v-if="!categories.length || !questions.length" class="border">

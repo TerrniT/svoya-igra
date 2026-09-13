@@ -7,7 +7,7 @@ import { expectedRespondents } from '@/lib/question-round'
 import { cn } from '@/lib/utils'
 
 const route = useRoute()
-const { rankedPlayers, inRoom, canEditBank, meId, me, chooserId, room, getQuestion } = usePlayState()
+const { rosterPlayers, inRoom, canEditBank, meId, me, chooserId, room, getQuestion } = usePlayState()
 
 const onQuestion = computed(() => route.name === 'question')
 const showScores = computed(() =>
@@ -50,8 +50,7 @@ const questionStatuses = computed(() => {
         <RouterLink to="/" class="group flex min-w-0 items-center gap-2 sm:gap-3">
           <span class="paw-mark shrink-0" aria-hidden="true" />
           <span class="flex min-w-0 flex-col leading-none">
-            <span class="font-display text-[0.6rem] tracking-[0.32em] text-primary uppercase sm:text-[0.65rem] sm:tracking-[0.38em]">Savanna night</span>
-            <span class="font-display text-lg tracking-[0.14em] text-foreground uppercase sm:text-2xl sm:tracking-[0.18em]">Своя игра</span>
+            <span class="font-display hidden sm:block text-lg tracking-[0.14em] text-foreground uppercase sm:text-2xl sm:tracking-[0.18em]">Своя игра</span>
           </span>
         </RouterLink>
 
@@ -65,12 +64,14 @@ const questionStatuses = computed(() => {
           <Button variant="ghost" size="sm" as-child>
             <RouterLink to="/">Игроки</RouterLink>
           </Button>
-          <Button variant="ghost" size="sm" as-child>
-            <RouterLink to="/game">Поле</RouterLink>
-          </Button>
-          <Button v-if="canEditBank && route.name !== 'join'" variant="outline" size="sm" as-child>
-            <RouterLink to="/admin">Админка</RouterLink>
-          </Button>
+          <template v-if="canEditBank && route.name !== 'join'">
+            <Button variant="ghost" size="sm" as-child>
+              <RouterLink to="/game">Поле</RouterLink>
+            </Button>
+            <Button variant="outline" size="sm" as-child>
+              <RouterLink to="/admin">Админка</RouterLink>
+            </Button>
+          </template>
         </nav>
       </div>
 
@@ -97,10 +98,10 @@ const questionStatuses = computed(() => {
         </div>
       </div>
 
-      <div v-else-if="showScores && rankedPlayers.length" class="border-t border-border/50 bg-card/40">
+      <div v-else-if="showScores && rosterPlayers.length" class="border-t border-border/50 bg-card/40">
         <div class="scores-rail mx-auto max-w-7xl px-3 py-2 sm:px-6">
           <div
-            v-for="player in rankedPlayers"
+            v-for="player in rosterPlayers"
             :key="player.id"
             :class="cn(
               'score-chip',
@@ -110,8 +111,9 @@ const questionStatuses = computed(() => {
           >
             <span class="truncate font-medium">{{ player.name }}</span>
             <span v-if="player.id === meId" class="text-primary text-[0.65rem] tracking-[0.16em] uppercase">Вы</span>
-            <span v-if="player.id === chooserId" class="text-primary text-[0.65rem] tracking-[0.16em] uppercase">ходит</span>
-            <span class="font-board text-lg text-primary">{{ player.score }}</span>
+            <span v-if="player.id === chooserId" class="chooser-now">ходит</span>
+            <span v-if="player.scoring" class="font-board text-lg text-primary">{{ player.score }}</span>
+            <span v-else class="text-muted-foreground text-[0.65rem] tracking-[0.16em] uppercase">ведущий</span>
           </div>
         </div>
       </div>

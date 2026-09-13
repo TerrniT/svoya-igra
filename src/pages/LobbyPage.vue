@@ -23,6 +23,7 @@ const {
   isHost,
   meId,
   players,
+  contestants,
   questions,
   categories,
   startGame,
@@ -38,7 +39,7 @@ const pickerOpen = ref(false)
 const pickerMode = ref<'room' | 'local'>('room')
 
 const canStartRoom = computed(() =>
-  inRoom.value && isHost.value && players.value.length > 0 && questions.value.length > 0,
+  inRoom.value && isHost.value && contestants.value.length > 0 && questions.value.length > 0,
 )
 const canStartLocal = computed(() => localSession.players.value.length > 0 && localBank.questions.value.length > 0)
 

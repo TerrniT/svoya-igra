@@ -19,7 +19,16 @@ export function correctAnswers(question: Question) {
   return question.answers.filter(answer => answer.isCorrect)
 }
 
+export function selectedAllAnswers(question: Question, answerIds: string[]) {
+  return questionKind(question) === 'multi'
+    && question.answers.length > 1
+    && answerIds.length === question.answers.length
+}
+
 export function formatSubmission(question: Question, submission: PlayerSubmission) {
+  if (submission.skipped)
+    return 'Пропуск'
+
   const kind = questionKind(question)
   if (kind === 'free')
     return submission.text.trim() || '—'
@@ -32,8 +41,11 @@ export function formatSubmission(question: Question, submission: PlayerSubmissio
 }
 
 export function scoreSubmission(question: Question, submission: PlayerSubmission) {
+  if (submission.skipped)
+    return 0
+
   const kind = questionKind(question)
-  if (kind === 'free')
+  if (kind === 'free' || selectedAllAnswers(question, submission.answerIds))
     return 0
 
   const correctIds = correctAnswers(question).map(answer => answer.id)
@@ -47,11 +59,8 @@ export function scoreSubmission(question: Question, submission: PlayerSubmission
   return Math.round((question.value * hits) / correctIds.length)
 }
 
-export function expectedRespondents(question: Question, players: RoomPlayer[]) {
-  const connected = players.filter(player => player.connected)
-  if (questionKind(question) === 'free')
-    return connected.filter(player => !player.isHost)
-  return connected
+export function expectedRespondents(_question: Question, players: RoomPlayer[]) {
+  return players.filter(player => player.connected && !player.isHost)
 }
 
 export function everyoneSubmitted(question: Question, players: RoomPlayer[], submissions: PlayerSubmission[]) {

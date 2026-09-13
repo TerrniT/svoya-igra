@@ -334,8 +334,8 @@ function useRoomBase() {
     send({ type: 'backToBoard' })
   }
 
-  function answer(questionId: string, input: { answerIds?: string[], text?: string }) {
-    send({ type: 'answer', questionId, answerIds: input.answerIds, text: input.text })
+  function answer(questionId: string, input: { answerIds?: string[], text?: string, skipped?: boolean }) {
+    send({ type: 'answer', questionId, answerIds: input.answerIds, text: input.text, skipped: input.skipped })
   }
 
   function reveal() {

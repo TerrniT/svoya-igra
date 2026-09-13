@@ -3,10 +3,19 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { CheckIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { usePlayState } from '@/composables/usePlayState'
-import { correctAnswers, formatSubmission, KIND_LABELS, questionKind, scoreSubmission } from '@/lib/question-round'
+import { correctAnswers, formatSubmission, KIND_LABELS, questionKind, scoreSubmission, selectedAllAnswers } from '@/lib/question-round'
 import { shuffle } from '@/lib/random'
 import { cn } from '@/lib/utils'
 import type { Answer } from '@/lib/types'
@@ -36,6 +45,7 @@ const questionId = computed(() => {
 
 const question = computed(() => questionId.value ? getQuestion(questionId.value) : undefined)
 const kind = computed(() => questionKind(question.value))
+const presenting = computed(() => inRoom.value && isHost.value)
 const categoryName = computed(() => {
   if (!question.value)
     return ''
@@ -51,19 +61,23 @@ const shuffledAnswers = ref<Answer[]>([])
 const pickedIds = ref<string[]>([])
 const freeText = ref('')
 const submittedLocally = ref(false)
+const localSkipped = ref(false)
 const localRevealed = ref(false)
 const localAwarded = ref(false)
 const localPicks = ref<string[]>([])
 const selectedWinners = ref<string[]>([])
+const greedyOpen = ref(false)
 
 watch(questionId, (id) => {
   pickedIds.value = []
   freeText.value = ''
   submittedLocally.value = false
+  localSkipped.value = false
   localRevealed.value = false
   localAwarded.value = false
   localPicks.value = []
   selectedWinners.value = []
+  greedyOpen.value = false
   if (inRoom.value && snapshot.value?.answers.length)
     shuffledAnswers.value = snapshot.value.answers
   else
@@ -92,15 +106,11 @@ const alreadySent = computed(() =>
   submittedLocally.value || Boolean(mySubmission.value) || revealed.value,
 )
 
-const canAnswer = computed(() => {
-  if (alreadySent.value)
-    return false
-  if (!inRoom.value)
-    return true
-  if (kind.value === 'free' && isHost.value)
-    return false
-  return true
-})
+const canAnswer = computed(() => !alreadySent.value && !presenting.value)
+
+const canPass = computed(() =>
+  inRoom.value && !isHost.value && !alreadySent.value && !revealed.value,
+)
 
 function finishBoardIfNeeded() {
   const ids = questions.value.map(item => item.id)
@@ -124,7 +134,7 @@ function togglePick(id: string) {
 }
 
 function submitAnswer() {
-  if (!question.value || alreadySent.value)
+  if (!question.value || alreadySent.value || presenting.value)
     return
 
   if (kind.value === 'free') {
@@ -151,6 +161,11 @@ function submitAnswer() {
     return
   }
 
+  if (selectedAllAnswers(question.value, pickedIds.value)) {
+    greedyOpen.value = true
+    return
+  }
+
   if (inRoom.value) {
     submittedLocally.value = true
     try {
@@ -164,6 +179,21 @@ function submitAnswer() {
 
   localPicks.value = [...pickedIds.value]
   localRevealed.value = true
+}
+
+function passQuestion() {
+  if (!question.value || !canPass.value)
+    return
+
+  submittedLocally.value = true
+  localSkipped.value = true
+  try {
+    room.answer(question.value.id, { skipped: true })
+  }
+  catch {
+    submittedLocally.value = false
+    localSkipped.value = false
+  }
 }
 
 function toggleWinner(playerId: string) {
@@ -220,13 +250,20 @@ function playerName(id: string) {
   return players.value.find(player => player.id === id)?.name ?? 'Игрок'
 }
 
+function answerLetter(index: number) {
+  return String.fromCharCode(65 + index)
+}
+
 const revealRows = computed(() => {
   if (inRoom.value) {
-    return submissions.value.map(submission => ({
-      playerId: submission.playerId,
-      label: formatSubmission(question.value!, submission),
-      points: snapshot.value?.roundScores[submission.playerId] ?? 0,
-    }))
+    return submissions.value
+      .filter(submission => !players.value.find(player => player.id === submission.playerId)?.isHost)
+      .map(submission => ({
+        playerId: submission.playerId,
+        label: formatSubmission(question.value!, submission),
+        points: snapshot.value?.roundScores[submission.playerId] ?? 0,
+        skipped: Boolean(submission.skipped),
+      }))
   }
 
   return [{
@@ -235,42 +272,59 @@ const revealRows = computed(() => {
       ? (freeText.value.trim() || '—')
       : shuffledAnswers.value.filter(answer => localPicks.value.includes(answer.id)).map(answer => answer.text).join(', ') || '—',
     points: question.value ? scoreSubmission(question.value, { playerId: 'local', answerIds: localPicks.value, text: freeText.value }) : 0,
+    skipped: false,
   }]
 })
 
 const waitingHint = computed(() => {
   if (!inRoom.value || revealed.value)
     return ''
+  if (presenting.value)
+    return 'Игроки отвечают на своих устройствах. Этот экран можно показать залу.'
   if (alreadySent.value)
-    return 'Ответ принят. Ждём остальных.'
-  if (kind.value === 'free' && isHost.value)
-    return 'Игроки пишут ответы. Когда все будут готовы, можно вскрыть.'
+    return localSkipped.value ? 'Пропустили. Ждём остальных.' : 'Ответ принят. Ждём остальных.'
   return ''
 })
 </script>
 
 <template>
-  <div v-if="question" class="mx-auto flex max-w-3xl flex-col gap-6">
-    <div class="flex flex-col gap-2">
+  <div v-if="question" :class="cn('mx-auto flex flex-col gap-6', presenting ? 'max-w-5xl' : 'max-w-3xl')">
+    <div :class="cn('flex flex-col gap-2', presenting && 'host-stage')">
       <p class="font-display text-primary text-xs tracking-[0.32em] uppercase">
         {{ categoryName }} · {{ question.value }} · {{ KIND_LABELS[kind] }}
       </p>
-      <h1 class="font-display text-2xl leading-tight text-balance sm:text-4xl">
+      <h1
+        :class="cn(
+          'font-display leading-tight text-balance',
+          presenting ? 'text-3xl sm:text-5xl lg:text-6xl' : 'text-2xl sm:text-4xl',
+        )"
+      >
         {{ question.text }}
       </h1>
-      <p v-if="inRoom && me" class="rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-sm">
+      <p v-if="inRoom && me && !presenting" class="rounded-lg border border-primary/35 bg-primary/10 px-3 py-2 text-sm">
         Вы в комнате как <span class="font-medium">{{ me.name }}</span>
       </p>
-      <p v-if="kind === 'single' && !revealed" class="text-muted-foreground text-sm">
+      <p v-if="kind === 'single' && !revealed && !presenting && !alreadySent" class="text-muted-foreground text-sm">
         Выберите один вариант.
       </p>
-      <p v-if="kind === 'multi' && !revealed" class="text-muted-foreground text-sm">
+      <p v-if="kind === 'multi' && !revealed && !presenting && !alreadySent" class="text-muted-foreground text-sm">
         Отметьте все верные варианты. Частичный ответ даёт часть баллов.
       </p>
       <p v-if="waitingHint" class="text-muted-foreground text-sm">{{ waitingHint }}</p>
     </div>
 
-    <div v-if="!revealed" class="flex flex-col gap-3">
+    <div v-if="presenting && kind !== 'free' && !revealed" class="grid gap-3">
+      <div
+        v-for="(answer, index) in shuffledAnswers"
+        :key="answer.id"
+        class="display-option"
+      >
+        <span class="display-option-letter">{{ answerLetter(index) }}</span>
+        <span>{{ answer.text }}</span>
+      </div>
+    </div>
+
+    <div v-if="!revealed && !presenting" class="flex flex-col gap-3">
       <div v-if="kind === 'free' && (canAnswer || alreadySent)" class="flex flex-col gap-3">
         <Textarea
           v-model="freeText"
@@ -279,7 +333,12 @@ const waitingHint = computed(() => {
           :disabled="!canAnswer"
           :readonly="!canAnswer"
         />
-        <Button v-if="canAnswer" class="w-full sm:w-auto" @click="submitAnswer">Ответить</Button>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <Button v-if="canAnswer" class="w-full sm:w-auto" @click="submitAnswer">Ответить</Button>
+          <Button v-if="canPass" variant="outline" class="w-full sm:w-auto" @click="passQuestion">
+            Пропустить
+          </Button>
+        </div>
       </div>
 
       <template v-else-if="kind !== 'free'">
@@ -310,18 +369,34 @@ const waitingHint = computed(() => {
             <span>{{ answer.text }}</span>
           </button>
         </div>
-        <Button
-          v-if="canAnswer"
-          class="w-full sm:w-auto"
-          :disabled="!pickedIds.length"
-          @click="submitAnswer"
-        >
-          Ответить
-        </Button>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <Button
+            v-if="canAnswer"
+            class="w-full sm:w-auto"
+            :disabled="!pickedIds.length"
+            @click="submitAnswer"
+          >
+            Ответить
+          </Button>
+          <Button v-if="canPass" variant="outline" class="w-full sm:w-auto" @click="passQuestion">
+            Пропустить
+          </Button>
+        </div>
       </template>
     </div>
 
-    <div v-else class="flex flex-col gap-6">
+    <div v-else-if="revealed" class="flex flex-col gap-6">
+      <div v-if="presenting && kind !== 'free'" class="grid gap-3">
+        <div
+          v-for="(answer, index) in shuffledAnswers"
+          :key="answer.id"
+          :class="cn('display-option', answer.isCorrect && 'display-option-right')"
+        >
+          <span class="display-option-letter">{{ answerLetter(index) }}</span>
+          <span>{{ answer.text }}</span>
+        </div>
+      </div>
+
       <div class="reveal-correct">
         <p class="font-display text-primary text-xs tracking-[0.32em] uppercase">Правильный ответ</p>
         <p class="font-display text-2xl leading-tight text-balance sm:text-4xl">{{ correctLabel }}</p>
@@ -407,5 +482,19 @@ const waitingHint = computed(() => {
         </Button>
       </div>
     </div>
+
+    <AlertDialog v-model:open="greedyOpen">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Какой ты умник, все ответы нельзя выбрать )</AlertDialogTitle>
+          <AlertDialogDescription>
+            Сними лишние варианты и отправь ответ ещё раз.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction>Ладно</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </div>
 </template>

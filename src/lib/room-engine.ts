@@ -1,9 +1,9 @@
 import type { Answer, QuizBank } from '@/lib/types'
 import type { ClientMessage, PlayerSubmission, RoomPhase, RoomPlayer, RoomSession, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
 import { emptyRoomSession } from '@/lib/room-protocol'
-import { nextChooserId, requireChooser } from '@/lib/chooser'
+import { nextChooserId, playingPlayers, requireChooser } from '@/lib/chooser'
 import { createId } from '@/lib/ids'
-import { everyoneSubmitted, questionKind, scoreSubmission } from '@/lib/question-round'
+import { everyoneSubmitted, questionKind, scoreSubmission, selectedAllAnswers } from '@/lib/question-round'
 
 export interface WireClient {
   key: string
@@ -170,7 +170,7 @@ export class RoomEngine {
     if (message.type === 'start' || message.type === 'playAgain') {
       if (!this.requireHost(current, room))
         throw new Error('Только ведущий начинает игру')
-      if (!room.session.players.length)
+      if (!playingPlayers(room.session.players).length)
         throw new Error('Нужен хотя бы один игрок')
       if (!room.bank.questions.length)
         throw new Error('В комнате нет вопросов')
@@ -280,16 +280,30 @@ export class RoomEngine {
       const player = room.session.players.find(item => item.id === current.playerId)
       if (!player)
         throw new Error('Игрок не найден')
+      if (player.isHost)
+        throw new Error('Ведущий не отвечает на вопросы')
       if (room.submissions.some(item => item.playerId === player.id))
         throw new Error('Вы уже ответили')
+
+      if (message.skipped) {
+        room.submissions.push({
+          playerId: player.id,
+          answerIds: [],
+          text: '',
+          skipped: true,
+        })
+        if (everyoneSubmitted(question, room.session.players, room.submissions))
+          this.revealRound(room)
+        this.broadcastState(room)
+        this.persist()
+        return current
+      }
 
       const kind = questionKind(question)
       const answerIds = [...new Set(message.answerIds ?? [])]
       const text = message.text?.trim() ?? ''
 
       if (kind === 'free') {
-        if (player.isHost)
-          throw new Error('Ведущий оценивает ответы, а не пишет свой')
         if (!text)
           throw new Error('Введите ответ')
       }
@@ -298,6 +312,8 @@ export class RoomEngine {
           throw new Error('Выберите вариант')
         if (kind === 'single' && answerIds.length !== 1)
           throw new Error('Выберите один вариант')
+        if (selectedAllAnswers(question, answerIds))
+          throw new Error('Все варианты выбрать нельзя')
         if (answerIds.some(id => !question.answers.some(answer => answer.id === id)))
           throw new Error('Ответ не найден')
       }
@@ -342,7 +358,10 @@ export class RoomEngine {
       if (!question || questionKind(question) !== 'free')
         throw new Error('Это не свободный вопрос')
 
-      const chosen = new Set(message.playerIds)
+      const chosen = new Set(message.playerIds.filter((playerId) => {
+        const winner = room.session.players.find(item => item.id === playerId)
+        return Boolean(winner && !winner.isHost)
+      }))
       const scores: Record<string, number> = {}
       for (const submission of room.submissions) {
         if (!chosen.has(submission.playerId))
@@ -447,6 +466,9 @@ export class RoomEngine {
     if (questionKind(question) !== 'free') {
       const scores: Record<string, number> = {}
       for (const submission of room.submissions) {
+        const respondent = room.session.players.find(item => item.id === submission.playerId)
+        if (respondent?.isHost)
+          continue
         const points = scoreSubmission(question, submission)
         scores[submission.playerId] = points
         if (points)
@@ -525,7 +547,7 @@ function snapshot(room: Room): RoomSnapshot {
       : room.answers.map(answer => ({ ...answer, isCorrect: false })),
     submissions: room.revealed
       ? room.submissions
-      : room.submissions.map(item => ({ playerId: item.playerId, answerIds: [], text: '' })),
+      : room.submissions.map(item => ({ playerId: item.playerId, answerIds: [], text: '', skipped: false })),
     revealed: room.revealed,
     awarded: room.awarded,
     roundScores: room.revealed ? room.roundScores : {},
