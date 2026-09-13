@@ -3,6 +3,7 @@ import type { ClientMessage, ServerMessage } from '@/lib/room-protocol'
 
 const APP_ID = 'svoya-igra'
 const JOIN_MS = 18_000
+export const HOST_RECOVERY_MS = 8_000
 
 export function randomRoomCode() {
   return String(Math.floor(Math.random() * 10000)).padStart(4, '0')
@@ -44,8 +45,16 @@ export class RoomLink {
     const ping = (peerId?: string) => {
       void this.hostAction.send({ t: 'h' }, peerId ? { target: peerId } : undefined)
     }
-    this.room.onPeerJoin = peerId => ping(peerId)
+    this.room.onPeerJoin = () => ping()
     ping()
+  }
+
+  isHostPeer(peerId: string) {
+    return Boolean(this.hostId && this.hostId === peerId)
+  }
+
+  clearHost() {
+    this.hostId = null
   }
 
   waitForHost(ms: number) {

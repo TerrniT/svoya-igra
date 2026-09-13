@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { useSessionStorage } from '@vueuse/core'
 import { createId } from '@/lib/ids'
 import {
+  HOST_RECOVERY_MS,
   RoomLink,
   claimHostRoom,
   openGuestRoom,
@@ -54,6 +55,7 @@ function useRoomBase() {
   let engine: RoomEngine | null = null
   let disposed = true
   let session = 0
+  let recoveringHost = false
 
   const connected = computed(() => snapshot.value !== null && linkReady.value)
   const isHost = computed(() => role.value === 'host')
@@ -119,6 +121,7 @@ function useRoomBase() {
   async function teardown() {
     session += 1
     disposed = true
+    recoveringHost = false
     engine = null
     const previous = link
     link = null
@@ -152,12 +155,43 @@ function useRoomBase() {
 
   function bindGuestLink(next: RoomLink) {
     next.onServer(applyServerMessage)
-    next.onPeerLeave(() => {
-      linkReady.value = false
-      if (disposed || hosting.value)
+    next.onPeerLeave((peerId) => {
+      // Trystero meshes every guest. A new player joining can flap a
+      // guest-to-guest link; that is not the room closing.
+      if (disposed || hosting.value || !next.isHostPeer(peerId))
         return
-      markRoomMissing()
+      next.clearHost()
+      linkReady.value = false
+      if (recoveringHost)
+        return
+      recoveringHost = true
+      void recoverGuestHost(next).finally(() => {
+        recoveringHost = false
+      })
     })
+  }
+
+  async function recoverGuestHost(next: RoomLink) {
+    const token = session
+    const hostId = await next.waitForHost(HOST_RECOVERY_MS)
+    if (token !== session || disposed || hosting.value || next !== link)
+      return
+    if (!hostId) {
+      markRoomMissing()
+      return
+    }
+
+    linkReady.value = true
+    try {
+      next.sendClient({
+        type: 'reconnect',
+        code: lastCode.value,
+        deviceId: deviceId.value,
+      })
+    }
+    catch {
+      markRoomMissing()
+    }
   }
 
   function send(message: ClientMessage) {
