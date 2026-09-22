@@ -1,5 +1,5 @@
 import { ref, watch, type Ref } from 'vue'
-import type { ThemeId } from './catalog'
+import { isThemeId, type ThemeId } from './catalog'
 
 const currentThemeId = ref<ThemeId>('studio')
 
@@ -18,7 +18,7 @@ export function setTheme(id: ThemeId) {
 }
 
 export function applyThemeFromId(id: string | null | undefined, fallback: ThemeId = 'studio') {
-  const next = (id === 'studio' || id === 'paper' || id === 'leopard') ? id : fallback
+  const next = id && isThemeId(id) ? id : fallback
   setTheme(next)
 }
 

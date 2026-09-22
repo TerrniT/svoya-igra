@@ -56,6 +56,18 @@ const router = createRouter({
       component: () => import('@/games/whoami/pages/ResultsPage.vue'),
       meta: { requiresPlayers: true, gameId: 'whoami' },
     },
+    {
+      path: '/golf',
+      name: 'golf-play',
+      component: () => import('@/games/golf/pages/PlayPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'golf' },
+    },
+    {
+      path: '/golf/results',
+      name: 'golf-results',
+      component: () => import('@/games/golf/pages/ResultsPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'golf' },
+    },
   ],
   scrollBehavior() {
     return { top: 0 }

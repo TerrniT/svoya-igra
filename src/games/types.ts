@@ -3,7 +3,7 @@ import type { RouteLocationNormalizedLoaded, Router, RouteRecordRaw } from 'vue-
 import type { ThemeId } from '@/themes/catalog'
 import type { RoomPlayer, RoomSession, ServerNotice } from '@/lib/room-protocol'
 
-export type GameId = 'quiz' | 'whoami'
+export type GameId = 'quiz' | 'whoami' | 'golf'
 
 export interface GameMeta {
   id: GameId
@@ -34,6 +34,8 @@ export interface GameReduceResult {
   scores?: Record<string, number>
   startedAt?: string | null
   notices?: ServerNotice[]
+  /** Broadcast the snapshot without writing the host session store. */
+  volatile?: boolean
 }
 
 export interface GameDriver {

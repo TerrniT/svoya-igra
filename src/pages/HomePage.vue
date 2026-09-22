@@ -11,7 +11,7 @@ applyThemeFromId('studio')
 </script>
 
 <template>
-  <div class="mx-auto flex max-w-3xl flex-col gap-6 sm:gap-8">
+    <div class="mx-auto flex max-w-5xl flex-col gap-6 sm:gap-8">
     <section class="flex flex-col gap-3 pt-1 text-center sm:pt-4">
       <Badge variant="secondary" class="mx-auto">Выберите игру</Badge>
       <h1 class="font-display text-3xl tracking-[0.12em] text-balance uppercase sm:text-5xl sm:tracking-[0.14em]">
@@ -22,7 +22,7 @@ applyThemeFromId('studio')
       </p>
     </section>
 
-    <div class="grid gap-4 sm:grid-cols-2">
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Card
         v-for="game in GAME_CATALOG"
         :key="game.id"

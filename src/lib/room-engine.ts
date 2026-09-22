@@ -207,7 +207,8 @@ export class RoomEngine {
       this.broadcast(room, { type: 'notice', ...notice })
 
     this.broadcastState(room)
-    this.persist()
+    if (!result.volatile)
+      this.persist()
     return current
   }
 

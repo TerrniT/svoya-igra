@@ -30,7 +30,7 @@ function wasOnPlayRoute() {
   if (typeof location === 'undefined')
     return false
   const path = location.pathname
-  return path.startsWith('/game') || path.startsWith('/whoami') || path.startsWith('/g/')
+  return path.startsWith('/game') || path.startsWith('/whoami') || path.startsWith('/golf') || path.startsWith('/g/')
 }
 
 function useRoomBase() {
@@ -402,6 +402,10 @@ function useRoomBase() {
     send({ type: 'kick', playerId: targetId })
   }
 
+  function sendGame(message: { type: string } & Record<string, unknown>) {
+    send(message)
+  }
+
   return {
     connecting,
     restoring,
@@ -438,6 +442,7 @@ function useRoomBase() {
     skip,
     markGuessed,
     kick,
+    sendGame,
   }
 }
 

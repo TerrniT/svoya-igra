@@ -1,6 +1,7 @@
 import type { GameDriver, GameId, GameModule } from './types'
 import { getGameMeta } from './catalog'
 import { quizDriver } from './quiz/driver'
+import { golfDriver } from './golf/driver'
 import { whoamiDriver } from './whoami/driver'
 
 const cache = new Map<GameId, Promise<GameModule>>()
@@ -11,6 +12,8 @@ export function resolveDriver(gameId: GameId): GameDriver {
     return quizDriver
   if (gameId === 'whoami')
     return whoamiDriver
+  if (gameId === 'golf')
+    return golfDriver
   throw new Error(`Неизвестная игра: ${gameId}`)
 }
 

@@ -23,6 +23,17 @@ export const GAME_CATALOG: GameMeta[] = [
     defaultThemeId: 'studio',
     load: () => import('./whoami').then(mod => mod.default ?? mod.whoamiModule),
   },
+  {
+    id: 'golf',
+    name: 'Гольф',
+    description: 'Пять лунок на ночном поле. Один мяч, ход по очереди, комната на всех.',
+    minPlayers: 1,
+    hostPlays: true,
+    supportsLocal: false,
+    themeIds: ['links', 'studio'],
+    defaultThemeId: 'links',
+    load: () => import('./golf').then(mod => mod.default ?? mod.golfModule),
+  },
 ]
 
 export function getGameMeta(id: string): GameMeta | undefined {

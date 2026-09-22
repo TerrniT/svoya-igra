@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { DoorOpenIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
+import { DoorOpenIcon, FlagIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import FirstChooserDialog from '@/games/quiz/components/FirstChooserDialog.vue'
 import RoomInvite from '@/components/room/RoomInvite.vue'
@@ -90,6 +90,8 @@ const canStartRoom = computed(() => {
     return contestants.value.length > 0 && questions.value.length > 0
   if (gameMeta.value.id === 'whoami')
     return players.value.length >= 2
+  if (gameMeta.value.id === 'golf')
+    return players.value.length >= 1 && players.value.length <= 8
   return false
 })
 
@@ -128,10 +130,15 @@ async function createRoom() {
 
 function beginRoom() {
   if (!canStartRoom.value) {
-    toast.error(gameMeta.value?.id === 'whoami' ? 'Нужно минимум двое' : 'Нужны игроки и вопросы')
+    const hint = gameMeta.value?.id === 'whoami'
+      ? 'Нужно минимум двое'
+      : gameMeta.value?.id === 'golf'
+        ? 'На поле от 1 до 8 игроков'
+        : 'Нужны игроки и вопросы'
+    toast.error(hint)
     return
   }
-  if (gameMeta.value?.id === 'whoami') {
+  if (gameMeta.value?.id === 'whoami' || gameMeta.value?.id === 'golf') {
     room.start()
     return
   }
@@ -240,7 +247,8 @@ const inThisGameRoom = computed(() =>
                 <RouterLink to="/admin">К вопросам</RouterLink>
               </Button>
               <Button size="lg" class="w-full sm:w-auto" :disabled="!canStartRoom" @click="beginRoom">
-                <PawPrintIcon data-icon="inline-start" />
+                <FlagIcon v-if="gameMeta.id === 'golf'" data-icon="inline-start" />
+                <PawPrintIcon v-else data-icon="inline-start" />
                 Начать игру
               </Button>
             </div>

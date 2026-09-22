@@ -1,4 +1,4 @@
-export type ThemeId = 'studio' | 'paper' | 'leopard'
+export type ThemeId = 'studio' | 'paper' | 'leopard' | 'links'
 
 export interface ThemeMeta {
   id: ThemeId
@@ -27,6 +27,16 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
     description: 'Саванна и пятна для викторины',
     kind: 'thematic',
   },
+  links: {
+    id: 'links',
+    name: 'Ночное поле',
+    description: 'Хвоя, латунь и луна для гольфа',
+    kind: 'thematic',
+  },
+}
+
+export function isThemeId(id: string): id is ThemeId {
+  return id in THEMES
 }
 
 export const DEFAULT_THEME_IDS: ThemeId[] = ['studio', 'paper']
