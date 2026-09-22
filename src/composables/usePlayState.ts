@@ -3,8 +3,10 @@ import { useGameSession } from '@/composables/useGameSession'
 import { useQuizBank } from '@/composables/useQuizBank'
 import { useRoom } from '@/composables/useRoom'
 import { playingPlayers } from '@/lib/chooser'
+import { isQuizPayload, type QuizPayload } from '@/games/quiz/types'
 import type { QuestionValue } from '@/lib/types'
 
+/** Shared room + local quiz helpers used by quiz pages and shell. */
 export function usePlayState() {
   const room = useRoom()
   const localSession = useGameSession()
@@ -14,15 +16,24 @@ export function usePlayState() {
   const isHost = computed(() => !inRoom.value || room.isHost.value)
   const canEditBank = computed(() => {
     if (inRoom.value)
-      return room.isHost.value
+      return room.isHost.value && room.snapshot.value?.gameId === 'quiz'
     if (room.hosting.value)
-      return true
+      return room.snapshot.value?.gameId === 'quiz' || !room.snapshot.value
     if (room.lastCode.value)
       return false
     return true
   })
   const meId = computed(() => room.playerId.value)
   const me = computed(() => room.me.value)
+  const gameId = computed(() => room.snapshot.value?.gameId ?? null)
+  const themeId = computed(() => room.snapshot.value?.themeId ?? null)
+
+  const quizPayload = computed<QuizPayload | null>(() => {
+    const snap = room.snapshot.value
+    if (!snap || snap.gameId !== 'quiz' || !isQuizPayload(snap.payload))
+      return null
+    return snap.payload
+  })
 
   const players = computed(() =>
     inRoom.value
@@ -43,13 +54,13 @@ export function usePlayState() {
 
   const answeredQuestionIds = computed(() =>
     inRoom.value
-      ? room.snapshot.value?.session.answeredQuestionIds ?? []
+      ? quizPayload.value?.answeredQuestionIds ?? []
       : localSession.answeredQuestionIds.value,
   )
 
   const chooserId = computed(() =>
     inRoom.value
-      ? room.snapshot.value?.session.chooserId ?? null
+      ? quizPayload.value?.chooserId ?? null
       : localSession.chooserId.value,
   )
 
@@ -88,14 +99,14 @@ export function usePlayState() {
 
   const categories = computed(() => {
     const list = inRoom.value
-      ? room.snapshot.value?.bank.categories ?? []
+      ? quizPayload.value?.bank.categories ?? []
       : localBank.categories.value
     return [...list].sort((left, right) => left.order - right.order)
   })
 
   const questions = computed(() =>
     inRoom.value
-      ? room.snapshot.value?.bank.questions ?? []
+      ? quizPayload.value?.bank.questions ?? []
       : localBank.questions.value,
   )
 
@@ -164,6 +175,9 @@ export function usePlayState() {
     canEditBank,
     meId,
     me,
+    gameId,
+    themeId,
+    quizPayload,
     players,
     contestants,
     scores,

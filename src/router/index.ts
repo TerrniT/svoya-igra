@@ -7,8 +7,13 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'lobby',
-      component: () => import('@/pages/LobbyPage.vue'),
+      name: 'home',
+      component: () => import('@/pages/HomePage.vue'),
+    },
+    {
+      path: '/g/:gameId',
+      name: 'game-lobby',
+      component: () => import('@/pages/GameLobbyPage.vue'),
     },
     {
       path: '/join/:code?',
@@ -18,26 +23,38 @@ const router = createRouter({
     {
       path: '/game',
       name: 'board',
-      component: () => import('@/pages/BoardPage.vue'),
-      meta: { requiresPlayers: true },
+      component: () => import('@/games/quiz/pages/BoardPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'quiz' },
     },
     {
       path: '/game/question/:id',
       name: 'question',
-      component: () => import('@/pages/QuestionPage.vue'),
-      meta: { requiresPlayers: true },
+      component: () => import('@/games/quiz/pages/QuestionPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'quiz' },
     },
     {
       path: '/game/results',
       name: 'results',
-      component: () => import('@/pages/ResultsPage.vue'),
-      meta: { requiresPlayers: true },
+      component: () => import('@/games/quiz/pages/ResultsPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'quiz' },
     },
     {
       path: '/admin',
       name: 'admin',
-      component: () => import('@/pages/AdminPage.vue'),
-      meta: { requiresHost: true },
+      component: () => import('@/games/quiz/pages/AdminPage.vue'),
+      meta: { requiresHost: true, gameId: 'quiz' },
+    },
+    {
+      path: '/whoami',
+      name: 'whoami-play',
+      component: () => import('@/games/whoami/pages/PlayPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'whoami' },
+    },
+    {
+      path: '/whoami/results',
+      name: 'whoami-results',
+      component: () => import('@/games/whoami/pages/ResultsPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'whoami' },
     },
   ],
   scrollBehavior() {
@@ -49,7 +66,7 @@ router.beforeEach((to) => {
   const { players, inRoom, canEditBank, room } = usePlayState()
 
   if (to.meta.requiresHost && !canEditBank.value)
-    return { name: 'lobby' }
+    return { name: 'home' }
 
   if (!to.meta.requiresPlayers)
     return true
@@ -60,7 +77,7 @@ router.beforeEach((to) => {
   if (inRoom.value || room.lastCode.value || room.connecting.value)
     return true
   if (players.value.length === 0)
-    return { name: 'lobby' }
+    return { name: 'home' }
 
   return true
 })

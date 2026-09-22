@@ -1,5 +1,6 @@
+import type { PlayerSubmission } from '@/games/quiz/types'
 import type { Question, QuestionKind } from '@/lib/types'
-import type { PlayerSubmission, RoomPlayer } from '@/lib/room-protocol'
+import type { RoomPlayer } from '@/lib/room-protocol'
 
 export function questionKind(question: Pick<Question, 'kind' | 'answers'> | undefined): QuestionKind {
   if (!question)

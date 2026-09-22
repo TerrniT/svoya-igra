@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import FirstChooserDialog from '@/components/room/FirstChooserDialog.vue'
+import FirstChooserDialog from '@/games/quiz/components/FirstChooserDialog.vue'
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { usePlayState } from '@/composables/usePlayState'
 import { QUESTION_VALUES } from '@/lib/types'

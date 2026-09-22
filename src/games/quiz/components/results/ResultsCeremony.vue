@@ -6,7 +6,7 @@ import { Confetti } from '@/components/inspira/ui/confetti'
 import { NumberTicker } from '@/components/inspira/ui/number-ticker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import GoldReveal from '@/components/results/GoldReveal.vue'
+import GoldReveal from '@/games/quiz/components/results/GoldReveal.vue'
 import { useResultsCeremony, type CeremonyPlayer } from '@/composables/useResultsCeremony'
 import { cn } from '@/lib/utils'
 

@@ -1,0 +1,42 @@
+export type ThemeId = 'studio' | 'paper' | 'leopard'
+
+export interface ThemeMeta {
+  id: ThemeId
+  name: string
+  description: string
+  /** Thematic themes are scoped to specific games via GameMeta.themeIds */
+  kind: 'default' | 'thematic'
+}
+
+export const THEMES: Record<ThemeId, ThemeMeta> = {
+  studio: {
+    id: 'studio',
+    name: 'Студия',
+    description: 'Тёмная нейтральная тема',
+    kind: 'default',
+  },
+  paper: {
+    id: 'paper',
+    name: 'Бумага',
+    description: 'Светлая нейтральная тема',
+    kind: 'default',
+  },
+  leopard: {
+    id: 'leopard',
+    name: 'Леопард',
+    description: 'Саванна и пятна для викторины',
+    kind: 'thematic',
+  },
+}
+
+export const DEFAULT_THEME_IDS: ThemeId[] = ['studio', 'paper']
+
+export function getTheme(id: string): ThemeMeta | undefined {
+  return THEMES[id as ThemeId]
+}
+
+export function resolveThemeId(id: string | null | undefined, allowed: ThemeId[], fallback: ThemeId): ThemeId {
+  if (id && allowed.includes(id as ThemeId))
+    return id as ThemeId
+  return fallback
+}

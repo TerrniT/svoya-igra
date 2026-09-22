@@ -36,6 +36,7 @@ const {
   localSession,
   isAnswered,
   isBoardComplete,
+  quizPayload,
 } = usePlayState()
 
 const questionId = computed(() => {
@@ -52,10 +53,9 @@ const categoryName = computed(() => {
   return categories.value.find(category => category.id === question.value?.categoryId)?.name ?? ''
 })
 
-const snapshot = computed(() => room.snapshot.value)
-const revealed = computed(() => inRoom.value ? Boolean(snapshot.value?.revealed) : localRevealed.value)
-const awarded = computed(() => inRoom.value ? Boolean(snapshot.value?.awarded) : localAwarded.value)
-const submissions = computed(() => snapshot.value?.submissions ?? [])
+const revealed = computed(() => inRoom.value ? Boolean(quizPayload.value?.revealed) : localRevealed.value)
+const awarded = computed(() => inRoom.value ? Boolean(quizPayload.value?.awarded) : localAwarded.value)
+const submissions = computed(() => quizPayload.value?.submissions ?? [])
 const mySubmission = computed(() => submissions.value.find(item => item.playerId === me.value?.id))
 const shuffledAnswers = ref<Answer[]>([])
 const pickedIds = ref<string[]>([])
@@ -78,8 +78,8 @@ watch(questionId, (id) => {
   localPicks.value = []
   selectedWinners.value = []
   greedyOpen.value = false
-  if (inRoom.value && snapshot.value?.answers.length)
-    shuffledAnswers.value = snapshot.value.answers
+  if (inRoom.value && quizPayload.value?.answers.length)
+    shuffledAnswers.value = quizPayload.value.answers
   else
     shuffledAnswers.value = question.value && kind.value !== 'free' ? shuffle(question.value.answers) : []
 
@@ -89,7 +89,7 @@ watch(questionId, (id) => {
     router.replace({ name: 'board' })
 }, { immediate: true })
 
-watch(() => snapshot.value?.answers, (answers) => {
+watch(() => quizPayload.value?.answers, (answers) => {
   if (inRoom.value && answers?.length)
     shuffledAnswers.value = answers
 })
@@ -261,7 +261,7 @@ const revealRows = computed(() => {
       .map(submission => ({
         playerId: submission.playerId,
         label: formatSubmission(question.value!, submission),
-        points: snapshot.value?.roundScores[submission.playerId] ?? 0,
+        points: quizPayload.value?.roundScores[submission.playerId] ?? 0,
         skipped: Boolean(submission.skipped),
       }))
   }

@@ -2,8 +2,8 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { PawPrintIcon } from '@lucide/vue'
-import FirstChooserDialog from '@/components/room/FirstChooserDialog.vue'
-import ResultsCeremony from '@/components/results/ResultsCeremony.vue'
+import FirstChooserDialog from '@/games/quiz/components/FirstChooserDialog.vue'
+import ResultsCeremony from '@/games/quiz/components/results/ResultsCeremony.vue'
 import { Button } from '@/components/ui/button'
 import { usePlayState } from '@/composables/usePlayState'
 import type { CeremonyPlayer } from '@/composables/useResultsCeremony'
@@ -59,11 +59,9 @@ function confirmFirstChooser(playerId: string) {
 }
 
 function backToLobby() {
-  if (inRoom.value && isHost.value) {
-    room.leaveRoom()
-    return
-  }
-  router.push({ name: 'lobby' })
+  if (inRoom.value && isHost.value)
+    void room.leaveRoom()
+  router.push({ name: 'game-lobby', params: { gameId: 'quiz' } })
 }
 </script>
 

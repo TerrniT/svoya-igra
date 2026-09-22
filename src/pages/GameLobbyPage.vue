@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { DoorOpenIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
-import FirstChooserDialog from '@/components/room/FirstChooserDialog.vue'
+import FirstChooserDialog from '@/games/quiz/components/FirstChooserDialog.vue'
 import RoomInvite from '@/components/room/RoomInvite.vue'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -14,8 +14,12 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { usePlayState } from '@/composables/usePlayState'
+import { getGameMeta, isGameId } from '@/games/catalog'
+import { THEMES, resolveThemeId, type ThemeId } from '@/themes/catalog'
+import { applyThemeFromId } from '@/themes/apply'
 import { cn } from '@/lib/utils'
 
+const route = useRoute()
 const router = useRouter()
 const {
   room,
@@ -31,17 +35,69 @@ const {
   localBank,
 } = usePlayState()
 
+const rawGameId = computed(() => {
+  const raw = route.params.gameId
+  return Array.isArray(raw) ? raw[0] : raw
+})
+
+const gameMeta = computed(() => {
+  const id = rawGameId.value
+  return id && isGameId(id) ? getGameMeta(id) : undefined
+})
+
+watch(rawGameId, (id) => {
+  if (!id || !isGameId(id))
+    router.replace({ name: 'home' })
+}, { immediate: true })
+
+watch(
+  () => room.snapshot.value?.gameId,
+  (id) => {
+    if (id && id !== rawGameId.value)
+      router.replace({ name: 'game-lobby', params: { gameId: id } })
+  },
+)
+
 const hostName = ref('')
 const hostNameError = ref('')
 const localName = ref('')
 const localNameError = ref('')
 const pickerOpen = ref(false)
 const pickerMode = ref<'room' | 'local'>('room')
+const selectedThemeId = ref<ThemeId>('studio')
 
-const canStartRoom = computed(() =>
-  inRoom.value && isHost.value && contestants.value.length > 0 && questions.value.length > 0,
+watch(gameMeta, (meta) => {
+  if (!meta)
+    return
+  selectedThemeId.value = meta.defaultThemeId
+  if (!inRoom.value)
+    applyThemeFromId(meta.defaultThemeId)
+}, { immediate: true })
+
+watch(selectedThemeId, (id) => {
+  if (!inRoom.value)
+    applyThemeFromId(id)
+})
+
+const themeOptions = computed(() =>
+  (gameMeta.value?.themeIds ?? []).map(id => THEMES[id]).filter(Boolean),
 )
-const canStartLocal = computed(() => localSession.players.value.length > 0 && localBank.questions.value.length > 0)
+
+const canStartRoom = computed(() => {
+  if (!inRoom.value || !isHost.value || !gameMeta.value)
+    return false
+  if (gameMeta.value.id === 'quiz')
+    return contestants.value.length > 0 && questions.value.length > 0
+  if (gameMeta.value.id === 'whoami')
+    return players.value.length >= 2
+  return false
+})
+
+const canStartLocal = computed(() =>
+  gameMeta.value?.supportsLocal
+  && localSession.players.value.length > 0
+  && localBank.questions.value.length > 0,
+)
 
 async function createRoom() {
   hostNameError.value = ''
@@ -49,9 +105,21 @@ async function createRoom() {
     hostNameError.value = 'Как зовут ведущего?'
     return
   }
+  if (!gameMeta.value)
+    return
+
+  const themeId = resolveThemeId(
+    selectedThemeId.value,
+    gameMeta.value.themeIds,
+    gameMeta.value.defaultThemeId,
+  )
 
   try {
-    await room.createRoom(hostName.value, localBank.getBank())
+    await room.createRoom(hostName.value, {
+      gameId: gameMeta.value.id,
+      themeId,
+      bank: gameMeta.value.id === 'quiz' ? localBank.getBank() : undefined,
+    })
   }
   catch (error) {
     toast.error(error instanceof Error ? error.message : 'Не удалось создать комнату')
@@ -60,7 +128,11 @@ async function createRoom() {
 
 function beginRoom() {
   if (!canStartRoom.value) {
-    toast.error('Нужны игроки и вопросы')
+    toast.error(gameMeta.value?.id === 'whoami' ? 'Нужно минимум двое' : 'Нужны игроки и вопросы')
+    return
+  }
+  if (gameMeta.value?.id === 'whoami') {
+    room.start()
     return
   }
   pickerMode.value = 'room'
@@ -93,32 +165,41 @@ function beginLocal() {
 function confirmFirstChooser(playerId: string) {
   startGame(playerId)
   if (pickerMode.value === 'local')
-    router.push({ name: 'board' })
+    void nextTick(() => router.push({ name: 'board' }))
 }
+
+const inThisGameRoom = computed(() =>
+  inRoom.value && room.snapshot.value?.gameId === gameMeta.value?.id,
+)
 </script>
 
 <template>
-  <div class="mx-auto flex max-w-3xl flex-col gap-6 sm:gap-8">
+  <div v-if="gameMeta" class="mx-auto flex max-w-3xl flex-col gap-6 sm:gap-8">
     <section class="flex flex-col gap-3 pt-1 text-center sm:pt-4">
-      <Badge variant="secondary" class="mx-auto">{{ inRoom ? `Комната ${room.code.value}` : 'Перед охотой' }}</Badge>
+      <Badge variant="secondary" class="mx-auto">
+        {{ inThisGameRoom ? `Комната ${room.code.value}` : gameMeta.name }}
+      </Badge>
       <h1 class="font-display text-3xl tracking-[0.12em] text-balance uppercase sm:text-5xl sm:tracking-[0.14em]">
-        {{ inRoom ? 'Прайд собирается' : 'Соберите прайд' }}
+        {{ inThisGameRoom ? 'Сбор игроков' : gameMeta.name }}
       </h1>
       <p class="text-muted-foreground text-pretty text-sm sm:text-base">
-        {{ inRoom
-          ? 'Остальные заходят по коду или QR. Ведущий не закрывает эту вкладку — комната живёт на его устройстве.'
-          : 'Создайте комнату для нескольких устройств или сыграйте на одном экране.' }}
+        {{ inThisGameRoom
+          ? 'Остальные заходят по коду или QR. Ведущий не закрывает эту вкладку.'
+          : gameMeta.description }}
       </p>
+      <Button v-if="!inThisGameRoom" variant="ghost" size="sm" class="mx-auto" as-child>
+        <RouterLink to="/">← Все игры</RouterLink>
+      </Button>
     </section>
 
-    <template v-if="inRoom">
+    <template v-if="inThisGameRoom">
       <div class="grid gap-4 md:grid-cols-[minmax(0,18rem)_1fr]">
         <RoomInvite v-if="isHost" :code="room.code.value" />
         <Card class="md:col-span-1" :class="isHost ? '' : 'md:col-span-2'">
           <CardHeader>
             <CardTitle>В комнате</CardTitle>
             <CardDescription>
-              {{ isHost ? 'Вы ведущий. Когда прайд соберётся — начинайте.' : 'Ждём, пока ведущий откроет поле.' }}
+              {{ isHost ? 'Когда все соберутся — начинайте.' : 'Ждём, пока ведущий начнёт игру.' }}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -155,7 +236,7 @@ function confirmFirstChooser(playerId: string) {
           <CardFooter class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
             <Button variant="ghost" class="w-full sm:w-auto" @click="room.leaveRoom()">Выйти</Button>
             <div v-if="isHost" class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
-              <Button variant="outline" class="w-full sm:w-auto" as-child>
+              <Button v-if="gameMeta.id === 'quiz'" variant="outline" class="w-full sm:w-auto" as-child>
                 <RouterLink to="/admin">К вопросам</RouterLink>
               </Button>
               <Button size="lg" class="w-full sm:w-auto" :disabled="!canStartRoom" @click="beginRoom">
@@ -168,8 +249,8 @@ function confirmFirstChooser(playerId: string) {
       </div>
     </template>
 
-    <Tabs v-else default-value="room" class="gap-4">
-      <TabsList class="w-full sm:w-auto">
+    <Tabs v-else :default-value="gameMeta.supportsLocal ? 'room' : 'room'" class="gap-4">
+      <TabsList v-if="gameMeta.supportsLocal" class="w-full sm:w-auto">
         <TabsTrigger value="room">Комната</TabsTrigger>
         <TabsTrigger value="local">Один экран</TabsTrigger>
       </TabsList>
@@ -179,7 +260,7 @@ function confirmFirstChooser(playerId: string) {
           <Card>
             <CardHeader>
               <CardTitle>Создать комнату</CardTitle>
-              <CardDescription>Вы ведущий. Не закрывайте вкладку: игроки подключаются напрямую к вам.</CardDescription>
+              <CardDescription>Выберите тему и имя. Тему после создания сменить нельзя.</CardDescription>
             </CardHeader>
             <CardContent>
               <form class="flex flex-col gap-4" @submit.prevent="createRoom">
@@ -195,6 +276,29 @@ function confirmFirstChooser(playerId: string) {
                     />
                     <FieldError v-if="hostNameError" :errors="[hostNameError]" />
                   </Field>
+                  <Field>
+                    <FieldLabel>Тема</FieldLabel>
+                    <div class="flex flex-col gap-2">
+                      <label
+                        v-for="theme in themeOptions"
+                        :key="theme.id"
+                        class="flex cursor-pointer items-start gap-3 rounded-lg border px-3 py-2.5"
+                        :class="selectedThemeId === theme.id ? 'border-primary bg-primary/10' : 'border-border/80'"
+                      >
+                        <input
+                          v-model="selectedThemeId"
+                          type="radio"
+                          class="mt-1"
+                          :value="theme.id"
+                          name="theme"
+                        >
+                        <span>
+                          <span class="block font-medium">{{ theme.name }}</span>
+                          <span class="text-muted-foreground text-xs">{{ theme.description }}</span>
+                        </span>
+                      </label>
+                    </div>
+                  </Field>
                 </FieldGroup>
                 <Button type="submit" size="lg" :disabled="room.connecting.value">
                   <QrCodeIcon data-icon="inline-start" />
@@ -207,12 +311,9 @@ function confirmFirstChooser(playerId: string) {
           <Card>
             <CardHeader>
               <CardTitle>Войти</CardTitle>
-              <CardDescription>4-значный код с экрана ведущего или QR-код камерой.</CardDescription>
+              <CardDescription>4-значный код с экрана ведущего или QR.</CardDescription>
             </CardHeader>
             <CardContent class="flex flex-col gap-3">
-              <p class="text-muted-foreground text-sm">
-                На телефоне отсканируйте QR или откройте страницу входа и введите код.
-              </p>
               <Button variant="outline" size="lg" as-child>
                 <RouterLink to="/join">
                   <DoorOpenIcon data-icon="inline-start" />
@@ -224,11 +325,11 @@ function confirmFirstChooser(playerId: string) {
         </div>
       </TabsContent>
 
-      <TabsContent value="local">
+      <TabsContent v-if="gameMeta.supportsLocal" value="local">
         <Card>
           <CardHeader>
             <CardTitle>Игроки на этом экране</CardTitle>
-            <CardDescription>Классический режим: имена здесь, баллы выбирает ведущий после верного ответа.</CardDescription>
+            <CardDescription>Классический режим без комнаты — только на этом устройстве.</CardDescription>
           </CardHeader>
           <CardContent>
             <form class="flex flex-col gap-4" @submit.prevent="submitLocalPlayer">
@@ -259,7 +360,7 @@ function confirmFirstChooser(playerId: string) {
                   <UserRoundIcon />
                 </EmptyMedia>
                 <EmptyTitle>Пока никого нет</EmptyTitle>
-                <EmptyDescription>Добавьте хотя бы одного охотника, чтобы открыть поле.</EmptyDescription>
+                <EmptyDescription>Добавьте хотя бы одного игрока.</EmptyDescription>
               </EmptyHeader>
             </Empty>
 
@@ -299,12 +400,13 @@ function confirmFirstChooser(playerId: string) {
     </Tabs>
 
     <FirstChooserDialog
+      v-if="gameMeta.id === 'quiz'"
       v-model:open="pickerOpen"
       :players="pickerMode === 'room' ? players : localSession.players.value"
       @pick="confirmFirstChooser"
     />
 
-    <Alert v-if="!questions.length">
+    <Alert v-if="gameMeta.id === 'quiz' && !questions.length">
       <AlertTitle>Поле пустое</AlertTitle>
       <AlertDescription>
         {{ isHost

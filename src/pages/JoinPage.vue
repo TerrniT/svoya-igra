@@ -19,8 +19,10 @@ const nameError = ref('')
 const codeError = ref('')
 
 onMounted(() => {
-  if (room.snapshot.value)
-    router.replace({ name: 'lobby' })
+  if (room.snapshot.value) {
+    const gameId = room.snapshot.value.gameId
+    router.replace({ name: 'game-lobby', params: { gameId } })
+  }
 })
 
 async function join() {
@@ -32,13 +34,14 @@ async function join() {
     return
   }
   if (!name.value.trim()) {
-    nameError.value = 'Как вас представить прайду?'
+    nameError.value = 'Как вас представить?'
     return
   }
 
   try {
     await room.joinRoom(code.value, name.value)
-    router.replace({ name: 'lobby' })
+    const gameId = room.snapshot.value?.gameId ?? 'quiz'
+    router.replace({ name: 'game-lobby', params: { gameId } })
   }
   catch (error) {
     if (room.restoreError.value)
@@ -95,7 +98,7 @@ async function join() {
         </form>
       </CardContent>
       <CardFooter>
-        <Button variant="ghost" class="w-full" @click="router.push({ name: 'lobby' })">
+        <Button variant="ghost" class="w-full" @click="router.push({ name: 'home' })">
           Назад
         </Button>
       </CardFooter>

@@ -12,44 +12,38 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { useActiveGame } from '@/composables/useActiveGame'
 import { useQuizBank } from '@/composables/useQuizBank'
 import { useRoom } from '@/composables/useRoom'
+import { isGameId } from '@/games/catalog'
 
 const router = useRouter()
 const route = useRoute()
 const room = useRoom()
+const { activeModule, loadError } = useActiveGame()
 const { getBank, categories, questions } = useQuizBank()
 
 onMounted(() => {
-  const guests = route.name !== 'lobby' && route.name !== 'join'
+  const guests = route.name !== 'home' && route.name !== 'join' && route.name !== 'game-lobby'
   void room.reconnect(guests)
 })
 
 watch(
-  () => [room.phase.value, room.snapshot.value?.currentQuestionId] as const,
-  ([phase, questionId]) => {
-    if (!room.snapshot.value || !phase)
+  () => [room.phase.value, room.snapshot.value, activeModule.value, route.name] as const,
+  ([phase, snapshot, mod]) => {
+    if (!snapshot || !phase || !mod)
       return
+    mod.syncRoute(phase, snapshot, router, route)
+  },
+)
 
-    if (phase === 'lobby' && (route.name === 'join' || route.name === 'board' || route.name === 'question' || route.name === 'results')) {
-      router.replace({ name: 'lobby' })
+watch(
+  () => room.snapshot.value?.gameId,
+  (gameId) => {
+    if (!gameId)
       return
-    }
-
-    if (phase === 'board' && route.name !== 'board') {
-      router.replace({ name: 'board' })
-      return
-    }
-
-    if (phase === 'question' && questionId) {
-      const current = Array.isArray(route.params.id) ? route.params.id[0] : route.params.id
-      if (route.name !== 'question' || current !== questionId)
-        router.replace({ name: 'question', params: { id: questionId } })
-      return
-    }
-
-    if (phase === 'results' && route.name !== 'results')
-      router.replace({ name: 'results' })
+    if (route.name === 'join' || (route.name === 'game-lobby' && route.params.gameId !== gameId))
+      router.replace({ name: 'game-lobby', params: { gameId } })
   },
 )
 
@@ -58,8 +52,9 @@ watch(
   ([snapshot, restoring, restoreError, lastCode]) => {
     if (snapshot || restoring || restoreError)
       return
-    if (!lastCode && (route.name === 'board' || route.name === 'question' || route.name === 'results'))
-      router.replace({ name: 'lobby' })
+    const playRoutes = ['board', 'question', 'results', 'whoami-play', 'whoami-results']
+    if (!lastCode && playRoutes.includes(String(route.name)))
+      router.replace({ name: 'home' })
   },
 )
 
@@ -73,8 +68,10 @@ watch(() => room.lastNotice.value, (notice) => {
     toast.success(notice.value ? `Ведущий начислил по ${notice.value}` : 'Очки начислены')
   if (notice.kind === 'skip')
     toast.message('Вопрос сдали без баллов')
+  if (notice.kind === 'guessed')
+    toast.success(notice.playerName ? `${notice.playerName} угадал!` : 'Угадано!')
   if (notice.kind === 'closed')
-    router.replace({ name: 'lobby' })
+    router.replace({ name: 'home' })
 })
 
 watch(() => room.error.value, (message) => {
@@ -82,10 +79,17 @@ watch(() => room.error.value, (message) => {
     toast.error(message)
 })
 
+watch(() => loadError.value, (message) => {
+  if (message)
+    toast.error(message)
+})
+
 watch(
-  [categories, questions, () => room.isHost.value, () => room.phase.value],
+  [categories, questions, () => room.isHost.value, () => room.phase.value, () => room.gameId.value],
   () => {
     if (!room.isHost.value || room.phase.value !== 'lobby' || !room.snapshot.value)
+      return
+    if (room.gameId.value !== 'quiz')
       return
     room.updateBank(getBank())
   },
@@ -93,8 +97,16 @@ watch(
 
 function closeMissingRoom() {
   room.dismissRestoreError()
-  router.replace({ name: 'lobby' })
+  router.replace({ name: 'home' })
 }
+
+watch(
+  () => route.params.gameId,
+  (id) => {
+    if (route.name === 'game-lobby' && id && !isGameId(String(Array.isArray(id) ? id[0] : id)))
+      router.replace({ name: 'home' })
+  },
+)
 </script>
 
 <template>
@@ -124,7 +136,7 @@ function closeMissingRoom() {
         </DialogDescription>
       </DialogHeader>
       <DialogFooter v-if="room.restoreError.value" class="sm:justify-center">
-        <Button class="w-full" @click="closeMissingRoom">К игрокам</Button>
+        <Button class="w-full" @click="closeMissingRoom">К играм</Button>
       </DialogFooter>
     </DialogContent>
   </Dialog>

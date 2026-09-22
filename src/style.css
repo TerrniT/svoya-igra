@@ -49,8 +49,87 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* Default = studio (dark neutral). Applied when data-theme is unset or studio. */
 :root,
-.dark {
+.dark,
+html[data-theme="studio"] {
+  --background: oklch(0.16 0.02 260);
+  --foreground: oklch(0.93 0.01 260);
+  --card: oklch(0.2 0.02 260);
+  --card-foreground: oklch(0.93 0.01 260);
+  --popover: oklch(0.18 0.02 260);
+  --popover-foreground: oklch(0.93 0.01 260);
+  --primary: oklch(0.72 0.14 250);
+  --primary-foreground: oklch(0.18 0.03 260);
+  --btn-edge: oklch(0.4 0.1 250);
+  --btn-edge-muted: oklch(0.22 0.02 260);
+  --btn-edge-destructive: oklch(0.32 0.14 25);
+  --secondary: oklch(0.26 0.02 260);
+  --secondary-foreground: oklch(0.93 0.01 260);
+  --muted: oklch(0.24 0.015 260);
+  --muted-foreground: oklch(0.7 0.02 260);
+  --accent: oklch(0.28 0.03 260);
+  --accent-foreground: oklch(0.93 0.01 260);
+  --destructive: oklch(0.68 0.18 25);
+  --border: oklch(0.45 0.03 260 / 40%);
+  --input: oklch(0.38 0.025 260 / 40%);
+  --ring: oklch(0.72 0.14 250);
+  --chart-1: oklch(0.72 0.14 250);
+  --chart-2: oklch(0.62 0.08 220);
+  --chart-3: oklch(0.48 0.05 260);
+  --chart-4: oklch(0.38 0.04 260);
+  --chart-5: oklch(0.28 0.03 260);
+  --radius: 0.8rem;
+  --sidebar: oklch(0.18 0.02 260);
+  --sidebar-foreground: oklch(0.93 0.01 260);
+  --sidebar-primary: oklch(0.72 0.14 250);
+  --sidebar-primary-foreground: oklch(0.18 0.03 260);
+  --sidebar-accent: oklch(0.26 0.02 260);
+  --sidebar-accent-foreground: oklch(0.93 0.01 260);
+  --sidebar-border: oklch(0.45 0.03 260 / 40%);
+  --sidebar-ring: oklch(0.72 0.14 250);
+}
+
+html[data-theme="paper"] {
+  color-scheme: light;
+  --background: oklch(0.97 0.01 85);
+  --foreground: oklch(0.22 0.02 50);
+  --card: oklch(0.99 0.005 85);
+  --card-foreground: oklch(0.22 0.02 50);
+  --popover: oklch(0.99 0.005 85);
+  --popover-foreground: oklch(0.22 0.02 50);
+  --primary: oklch(0.45 0.12 250);
+  --primary-foreground: oklch(0.98 0.01 85);
+  --btn-edge: oklch(0.35 0.1 250);
+  --btn-edge-muted: oklch(0.85 0.02 85);
+  --btn-edge-destructive: oklch(0.45 0.16 25);
+  --secondary: oklch(0.92 0.015 85);
+  --secondary-foreground: oklch(0.28 0.02 50);
+  --muted: oklch(0.94 0.01 85);
+  --muted-foreground: oklch(0.48 0.02 50);
+  --accent: oklch(0.93 0.02 85);
+  --accent-foreground: oklch(0.28 0.02 50);
+  --destructive: oklch(0.55 0.2 25);
+  --border: oklch(0.82 0.02 70 / 55%);
+  --input: oklch(0.82 0.02 70 / 50%);
+  --ring: oklch(0.45 0.12 250);
+  --chart-1: oklch(0.45 0.12 250);
+  --chart-2: oklch(0.55 0.1 200);
+  --chart-3: oklch(0.65 0.06 85);
+  --chart-4: oklch(0.75 0.04 85);
+  --chart-5: oklch(0.85 0.02 85);
+  --radius: 0.8rem;
+  --sidebar: oklch(0.96 0.01 85);
+  --sidebar-foreground: oklch(0.22 0.02 50);
+  --sidebar-primary: oklch(0.45 0.12 250);
+  --sidebar-primary-foreground: oklch(0.98 0.01 85);
+  --sidebar-accent: oklch(0.92 0.015 85);
+  --sidebar-accent-foreground: oklch(0.28 0.02 50);
+  --sidebar-border: oklch(0.82 0.02 70 / 55%);
+  --sidebar-ring: oklch(0.45 0.12 250);
+}
+
+html[data-theme="leopard"] {
   --background: oklch(0.17 0.028 50);
   --foreground: oklch(0.93 0.035 85);
   --card: oklch(0.22 0.03 48);
@@ -110,32 +189,52 @@
   }
 }
 
-.leopard-wash {
+.theme-wash {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  background:
+    radial-gradient(1000px 500px at 10% -5%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 55%),
+    radial-gradient(800px 400px at 100% 0%, color-mix(in oklch, var(--primary) 12%, transparent), transparent 50%),
+    linear-gradient(180deg, var(--background), color-mix(in oklch, var(--background) 88%, black));
+}
+
+html[data-theme="leopard"] .theme-wash {
   background:
     radial-gradient(1200px 600px at 12% -10%, oklch(0.35 0.08 70 / 0.35), transparent 55%),
     radial-gradient(900px 500px at 100% 0%, oklch(0.28 0.06 40 / 0.4), transparent 50%),
     linear-gradient(180deg, oklch(0.2 0.03 50), oklch(0.14 0.025 45));
 }
 
-.leopard-spots {
+.theme-spots {
+  display: none;
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
+}
+
+html[data-theme="leopard"] .theme-spots {
+  display: block;
   opacity: 0.28;
   background-image: url("/leopard-spots.svg");
   background-size: 460px 460px;
 }
 
+.brand-mark,
 .paw-mark {
   width: 2.4rem;
   height: 2.4rem;
   border-radius: 999px;
-  border: 1px solid oklch(0.78 0.155 78 / 0.45);
+  border: 1px solid color-mix(in oklch, var(--primary) 45%, transparent);
+  background:
+    radial-gradient(circle at 50% 50%, var(--primary) 0 28%, transparent 29%),
+    color-mix(in oklch, var(--card) 90%, black);
+}
+
+html[data-theme="leopard"] .brand-mark,
+html[data-theme="leopard"] .paw-mark {
   background:
     radial-gradient(circle at 50% 62%, oklch(0.78 0.155 78) 0 18%, transparent 19%),
     radial-gradient(circle at 28% 34%, oklch(0.78 0.155 78) 0 10%, transparent 11%),

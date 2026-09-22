@@ -10,6 +10,9 @@ import {
 import { RoomEngine, type HostRoomState, type WireClient } from '@/lib/room-engine'
 import type { ClientMessage, RoomRole, RoomSnapshot, ServerMessage } from '@/lib/room-protocol'
 import type { QuizBank } from '@/lib/types'
+import type { GameId } from '@/games/types'
+import { resolveDriver } from '@/games/load-game'
+import { applyThemeFromId } from '@/themes/apply'
 
 function abortIfStale(token: number, session: number) {
   if (token !== session)
@@ -24,7 +27,10 @@ const HOST_STATE_KEY = 'svoya-igra:host-room'
 const HOSTING_KEY = 'svoya-igra:hosting'
 
 function wasOnPlayRoute() {
-  return typeof location !== 'undefined' && location.pathname.startsWith('/game')
+  if (typeof location === 'undefined')
+    return false
+  const path = location.pathname
+  return path.startsWith('/game') || path.startsWith('/whoami') || path.startsWith('/g/')
 }
 
 function useRoomBase() {
@@ -61,6 +67,8 @@ function useRoomBase() {
   const isHost = computed(() => role.value === 'host')
   const code = computed(() => snapshot.value?.code ?? '')
   const phase = computed(() => snapshot.value?.phase ?? null)
+  const gameId = computed(() => snapshot.value?.gameId ?? null)
+  const themeId = computed(() => snapshot.value?.themeId ?? null)
   const me = computed(() => snapshot.value?.session.players.find(player => player.id === playerId.value))
 
   const localWire: WireClient = {
@@ -91,6 +99,7 @@ function useRoomBase() {
     snapshot.value = message.snapshot
     error.value = ''
     lastCode.value = message.snapshot.code
+    applyThemeFromId(message.snapshot.themeId)
 
     if (message.type === 'hello') {
       playerId.value = message.playerId
@@ -156,8 +165,6 @@ function useRoomBase() {
   function bindGuestLink(next: RoomLink) {
     next.onServer(applyServerMessage)
     next.onPeerLeave((peerId) => {
-      // Trystero meshes every guest. A new player joining can flap a
-      // guest-to-guest link; that is not the room closing.
       if (disposed || hosting.value || !next.isHostPeer(peerId))
         return
       next.clearHost()
@@ -216,7 +223,7 @@ function useRoomBase() {
     disposed = false
     link = next
     bindHostLink(next)
-    engine = new RoomEngine(persistHost)
+    engine = new RoomEngine(persistHost, resolveDriver)
     linkReady.value = true
     hosting.value = true
 
@@ -237,7 +244,10 @@ function useRoomBase() {
     linkReady.value = true
   }
 
-  async function createRoom(name: string, bank: QuizBank) {
+  async function createRoom(
+    name: string,
+    options: { gameId: GameId, themeId: string, bank?: QuizBank },
+  ) {
     connecting.value = true
     error.value = ''
     await teardown()
@@ -252,7 +262,7 @@ function useRoomBase() {
       connectAsHost(claimed.link)
       if (token !== session || !engine)
         throw new Error('Не удалось создать комнату')
-      engine.createRoom(claimed.code, name, deviceId.value, bank, localWire)
+      engine.createRoom(claimed.code, name, deviceId.value, options, localWire)
     }
     catch (caught) {
       if (token !== session)
@@ -348,11 +358,11 @@ function useRoomBase() {
     send({ type: 'updateBank', bank })
   }
 
-  function start(firstChooserId: string) {
+  function start(firstChooserId?: string) {
     send({ type: 'start', firstChooserId })
   }
 
-  function playAgain(firstChooserId: string) {
+  function playAgain(firstChooserId?: string) {
     send({ type: 'playAgain', firstChooserId })
   }
 
@@ -384,6 +394,10 @@ function useRoomBase() {
     send({ type: 'skip', questionId })
   }
 
+  function markGuessed(targetId: string) {
+    send({ type: 'markGuessed', playerId: targetId })
+  }
+
   function kick(targetId: string) {
     send({ type: 'kick', playerId: targetId })
   }
@@ -401,6 +415,8 @@ function useRoomBase() {
     isHost,
     code,
     phase,
+    gameId,
+    themeId,
     me,
     error,
     lastNotice,
@@ -420,6 +436,7 @@ function useRoomBase() {
     reveal,
     awardFree,
     skip,
+    markGuessed,
     kick,
   }
 }
