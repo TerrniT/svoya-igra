@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { DoorOpenIcon, FlagIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
+import { DoorOpenIcon, FlagIcon, LockIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import FirstChooserDialog from '@/games/quiz/components/FirstChooserDialog.vue'
 import RoomInvite from '@/components/room/RoomInvite.vue'
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { usePlayState } from '@/composables/usePlayState'
 import { getGameMeta, isGameId } from '@/games/catalog'
+import { DEEP_QUESTIONS, type DeepQuestionCategory } from '@/games/deep-question/data.ru'
 import { THEMES, resolveThemeId, type ThemeId } from '@/themes/catalog'
 import { applyThemeFromId } from '@/themes/apply'
 import { cn } from '@/lib/utils'
@@ -65,6 +66,10 @@ const localNameError = ref('')
 const pickerOpen = ref(false)
 const pickerMode = ref<'room' | 'local'>('room')
 const selectedThemeId = ref<ThemeId>('studio')
+const deepQuestionCategory = ref<DeepQuestionCategory>('friends')
+const deepQuestionCount = computed(() =>
+  DEEP_QUESTIONS.filter(question => question.category === deepQuestionCategory.value).length,
+)
 
 watch(gameMeta, (meta) => {
   if (!meta)
@@ -92,13 +97,19 @@ const canStartRoom = computed(() => {
     return players.value.length >= 2
   if (gameMeta.value.id === 'golf')
     return players.value.length >= 1 && players.value.length <= 8
+  if (gameMeta.value.id === 'deep-question')
+    return players.value.length >= 1
   return false
 })
 
 const canStartLocal = computed(() =>
-  gameMeta.value?.supportsLocal
-  && localSession.players.value.length > 0
-  && localBank.questions.value.length > 0,
+  gameMeta.value?.id === 'deep-question'
+    ? true
+    : Boolean(
+        gameMeta.value?.supportsLocal
+        && localSession.players.value.length > 0
+        && localBank.questions.value.length > 0,
+      ),
 )
 
 async function createRoom() {
@@ -109,6 +120,10 @@ async function createRoom() {
   }
   if (!gameMeta.value)
     return
+  if (!gameMeta.value.roomEnabled) {
+    toast.message('Режим комнаты пока закрыт')
+    return
+  }
 
   const themeId = resolveThemeId(
     selectedThemeId.value,
@@ -138,7 +153,7 @@ function beginRoom() {
     toast.error(hint)
     return
   }
-  if (gameMeta.value?.id === 'whoami' || gameMeta.value?.id === 'golf') {
+  if (gameMeta.value?.id === 'whoami' || gameMeta.value?.id === 'golf' || gameMeta.value?.id === 'deep-question') {
     room.start()
     return
   }
@@ -157,6 +172,13 @@ function submitLocalPlayer() {
 }
 
 function beginLocal() {
+  if (gameMeta.value?.id === 'deep-question') {
+    void router.push({
+      name: 'deep-question-play',
+      query: { category: deepQuestionCategory.value },
+    })
+    return
+  }
   if (!localSession.players.value.length) {
     toast.error('Сначала добавьте хотя бы одного игрока')
     return
@@ -257,9 +279,13 @@ const inThisGameRoom = computed(() =>
       </div>
     </template>
 
-    <Tabs v-else :default-value="gameMeta.supportsLocal ? 'room' : 'room'" class="gap-4">
+    <Tabs v-else :default-value="gameMeta.id === 'deep-question' ? 'local' : 'room'" class="gap-4">
       <TabsList v-if="gameMeta.supportsLocal" class="w-full sm:w-auto">
-        <TabsTrigger value="room">Комната</TabsTrigger>
+        <TabsTrigger value="room" :disabled="!gameMeta.roomEnabled">
+          <LockIcon v-if="!gameMeta.roomEnabled" data-icon="inline-start" />
+          Комната
+          <span v-if="!gameMeta.roomEnabled" class="text-muted-foreground text-xs">(скоро)</span>
+        </TabsTrigger>
         <TabsTrigger value="local">Один экран</TabsTrigger>
       </TabsList>
 
@@ -334,7 +360,61 @@ const inThisGameRoom = computed(() =>
       </TabsContent>
 
       <TabsContent v-if="gameMeta.supportsLocal" value="local">
-        <Card>
+        <Card v-if="gameMeta.id === 'deep-question'">
+          <CardHeader>
+            <CardTitle>Разговор на одном экране</CardTitle>
+            <CardDescription>
+              Выбирайте случайный вопрос, обсуждайте его вслух и переходите к следующему, когда будете готовы.
+            </CardDescription>
+          </CardHeader>
+          <CardContent class="flex flex-col gap-4">
+            <Field>
+              <FieldLabel>С кем будете играть?</FieldLabel>
+              <div class="grid gap-2 sm:grid-cols-2">
+                <label
+                  class="flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3"
+                  :class="deepQuestionCategory === 'partner' ? 'border-primary bg-primary/10' : 'border-border/80'"
+                >
+                  <input
+                    v-model="deepQuestionCategory"
+                    type="radio"
+                    value="partner"
+                    name="deep-question-category"
+                    class="mt-1"
+                  >
+                  <span>
+                    <span class="block font-medium">С партнёром</span>
+                    <span class="text-muted-foreground text-xs">Вопросы о близости, чувствах и отношениях.</span>
+                  </span>
+                </label>
+                <label
+                  class="flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3"
+                  :class="deepQuestionCategory === 'friends' ? 'border-primary bg-primary/10' : 'border-border/80'"
+                >
+                  <input
+                    v-model="deepQuestionCategory"
+                    type="radio"
+                    value="friends"
+                    name="deep-question-category"
+                    class="mt-1"
+                  >
+                  <span>
+                    <span class="block font-medium">С друзьями</span>
+                    <span class="text-muted-foreground text-xs">Без романтических и любовных вопросов.</span>
+                  </span>
+                </label>
+              </div>
+            </Field>
+            <div class="rounded-xl border border-border/80 bg-muted/30 p-4 text-sm">
+              В выбранной категории {{ deepQuestionCount }} вопросов. Прогресс сохраняется на этом устройстве.
+            </div>
+            <Button size="lg" @click="beginLocal">
+              <PawPrintIcon data-icon="inline-start" />
+              Начать игру
+            </Button>
+          </CardContent>
+        </Card>
+        <Card v-else>
           <CardHeader>
             <CardTitle>Игроки на этом экране</CardTitle>
             <CardDescription>Классический режим без комнаты — только на этом устройстве.</CardDescription>

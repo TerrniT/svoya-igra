@@ -68,6 +68,12 @@ const router = createRouter({
       component: () => import('@/games/golf/pages/ResultsPage.vue'),
       meta: { requiresPlayers: true, gameId: 'golf' },
     },
+    {
+      path: '/deep-question',
+      name: 'deep-question-play',
+      component: () => import('@/games/deep-question/pages/PlayPage.vue'),
+      meta: { gameId: 'deep-question', localOnly: true },
+    },
   ],
   scrollBehavior() {
     return { top: 0 }

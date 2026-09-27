@@ -3,7 +3,7 @@ import type { RouteLocationNormalizedLoaded, Router, RouteRecordRaw } from 'vue-
 import type { ThemeId } from '@/themes/catalog'
 import type { RoomPlayer, RoomSession, ServerNotice } from '@/lib/room-protocol'
 
-export type GameId = 'quiz' | 'whoami' | 'golf'
+export type GameId = 'quiz' | 'whoami' | 'golf' | 'deep-question'
 
 export interface GameMeta {
   id: GameId
@@ -13,6 +13,8 @@ export interface GameMeta {
   /** Host participates as a scoring/playing contestant */
   hostPlays: boolean
   supportsLocal: boolean
+  /** Whether creating a new room is currently available for this game. */
+  roomEnabled: boolean
   themeIds: ThemeId[]
   defaultThemeId: ThemeId
   load: () => Promise<GameModule>

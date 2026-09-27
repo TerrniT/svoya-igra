@@ -91,6 +91,44 @@ html[data-theme="studio"] {
   --sidebar-ring: oklch(0.72 0.14 250);
 }
 
+html[data-theme="deep"] {
+  color-scheme: dark;
+  --background: oklch(0.06 0 0);
+  --foreground: oklch(0.97 0 0);
+  --card: oklch(0.1 0 0);
+  --card-foreground: oklch(0.97 0 0);
+  --popover: oklch(0.08 0 0);
+  --popover-foreground: oklch(0.97 0 0);
+  --primary: oklch(0.97 0 0);
+  --primary-foreground: oklch(0.06 0 0);
+  --btn-edge: oklch(0.97 0 0);
+  --btn-edge-muted: oklch(0.32 0 0);
+  --btn-edge-destructive: oklch(0.32 0.14 25);
+  --secondary: oklch(0.16 0 0);
+  --secondary-foreground: oklch(0.97 0 0);
+  --muted: oklch(0.14 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+  --accent: oklch(0.2 0 0);
+  --accent-foreground: oklch(0.97 0 0);
+  --destructive: oklch(0.68 0.18 25);
+  --border: oklch(0.75 0 0 / 32%);
+  --input: oklch(0.5 0 0 / 40%);
+  --ring: oklch(0.97 0 0);
+  --chart-1: oklch(0.97 0 0);
+  --chart-2: oklch(0.72 0 0);
+  --chart-3: oklch(0.52 0 0);
+  --chart-4: oklch(0.34 0 0);
+  --chart-5: oklch(0.2 0 0);
+  --sidebar: oklch(0.08 0 0);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.97 0 0);
+  --sidebar-primary-foreground: oklch(0.06 0 0);
+  --sidebar-accent: oklch(0.16 0 0);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.75 0 0 / 32%);
+  --sidebar-ring: oklch(0.97 0 0);
+}
+
 html[data-theme="paper"] {
   color-scheme: light;
   --background: oklch(0.97 0.01 85);
@@ -260,6 +298,20 @@ html[data-theme="links"] .theme-wash {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+}
+
+.deep-question-next-button {
+  color: white;
+  background-image: url("https://media.giphy.com/media/26BROrSHlmyzzHf3i/giphy.gif");
+  background-position: center;
+  background-size: cover;
+}
+
+.deep-question-next-button:hover:not(:disabled),
+.deep-question-next-button:focus-visible:not(:disabled) {
+  color: white;
+  background-image: url("https://media.giphy.com/media/26BROrSHlmyzzHf3i/giphy.gif");
+  background-size: cover;
 }
 
 html[data-theme="leopard"] .theme-spots {
