@@ -9,9 +9,16 @@ lerna-debug.log*
 
 node_modules
 dist
+test-results
+playwright-report
+blob-report
 dist-ssr
 *.local
 .vercel
+backend/bin/
+frontend/dist
+frontend/test-results
+frontend/playwright-report
 .env
 .env.*
 !.env.example

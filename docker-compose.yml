@@ -1,0 +1,35 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-8080}
+      WS_PATH: ${WS_PATH:-/ws}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      JOIN_ORIGINS: ${JOIN_ORIGINS:-}
+      MAX_MESSAGE_BYTES: ${MAX_MESSAGE_BYTES:-1048576}
+      READ_TIMEOUT: ${READ_TIMEOUT:-60s}
+      WRITE_TIMEOUT: ${WRITE_TIMEOUT:-8s}
+      PING_INTERVAL: ${PING_INTERVAL:-20s}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    expose:
+      - "8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
