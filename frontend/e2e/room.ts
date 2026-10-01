@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test'
 
-export async function createHostRoom(page: Page, gameId: 'whoami' | 'golf', name: string) {
+export async function createHostRoom(page: Page, gameId: 'whoami' | 'golf' | 'platforms', name: string) {
   await page.goto(`/g/${gameId}`)
   await page.locator('#host-name').fill(name)
   await page.getByRole('button', { name: 'Создать' }).click()

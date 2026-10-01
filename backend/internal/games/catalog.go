@@ -4,6 +4,7 @@ import (
 	"svoya-igra/internal/gamekit"
 	"svoya-igra/internal/games/deepquestion"
 	"svoya-igra/internal/games/golf"
+	"svoya-igra/internal/games/platforms"
 	"svoya-igra/internal/games/quiz"
 	"svoya-igra/internal/games/whoami"
 )
@@ -15,6 +16,7 @@ func NewCatalog() *gamekit.Registry {
 		whoami.NewModule(),
 		golf.NewModule(),
 		deepquestion.NewModule(),
+		platforms.NewModule(),
 	)
 	return registry
 }

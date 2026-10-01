@@ -20,7 +20,7 @@ function wasOnPlayRoute() {
   if (typeof location === 'undefined')
     return false
   const path = location.pathname
-  return path.startsWith('/game') || path.startsWith('/whoami') || path.startsWith('/golf') || path.startsWith('/g/')
+  return path.startsWith('/game') || path.startsWith('/whoami') || path.startsWith('/golf') || path.startsWith('/platforms') || path.startsWith('/g/')
 }
 
 function useRoomBase() {

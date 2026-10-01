@@ -52,7 +52,7 @@ watch(
   ([snapshot, restoring, restoreError, lastCode]) => {
     if (snapshot || restoring || restoreError)
       return
-    const playRoutes = ['board', 'question', 'results', 'whoami-play', 'whoami-results', 'golf-play', 'golf-results', 'deep-question-play']
+    const playRoutes = ['board', 'question', 'results', 'whoami-play', 'whoami-results', 'golf-play', 'golf-results', 'deep-question-play', 'platforms-play', 'platforms-results']
     if (!lastCode && playRoutes.includes(String(route.name)) && !route.meta.localOnly)
       router.replace({ name: 'home' })
   },
