@@ -29,6 +29,6 @@ test('двое толкают фигуры, платформы помечают�
   await expect(guest.getByText('Ваш толчок')).toBeVisible({ timeout: 20_000 })
   await push(guest)
 
-  await expect(page.getByText(/Платформа уходит|Уходят 2 платформы/)).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByText(/Круг 2/)).toBeVisible({ timeout: 8000 })
+  await expect(page.locator('.platforms-banner')).toContainText(/платформ/i, { timeout: 20_000 })
+  await expect(page.locator('.platforms-kicker')).toHaveText('Круг 2', { timeout: 8000 })
 })

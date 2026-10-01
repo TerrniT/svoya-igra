@@ -498,7 +498,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div v-else class="platforms-aim-row">
-          <p>{{ banner }}</p>
+          <p>{{ hint }}</p>
           <Button
             v-if="room.isHost.value && payload?.status === 'aim'"
             type="button"
