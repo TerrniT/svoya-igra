@@ -6,10 +6,12 @@ export const START_SEATS = [0, 8, 2, 6, 4, 1, 7, 3, 5] as const
 
 export const FIGURE_RADIUS = 0.22
 export const PLATFORM_SIZE = 1.72
+export const PLATFORM_PHYS = 2.22
 export const PLATFORM_HEIGHT = 0.32
 export const SPACING = 2.45
 export const HAZARD_Y = -0.45
-export const LAND_RADIUS = PLATFORM_SIZE / 2 + 0.28
+export const LAND_RADIUS = 1.28
+export const GRAVITY_Y = -16
 
 export const FIGURE_COLORS = [
   '#f0b429',
@@ -78,10 +80,11 @@ export function yawTowardCenter(from: Vec3) {
 
 export function shotVelocity(yaw: number, power: number): Vec3 {
   const clamped = Math.min(1, Math.max(0, power))
-  const speed = 1.05 + clamped ** 1.15 * 8.2
+  const speed = 0.55 + clamped ** 1.15 * 7.4
+  const lift = 0.06 + clamped ** 1.2 * 2.2
   return {
     x: Math.sin(yaw) * speed,
-    y: 0.08,
+    y: lift,
     z: Math.cos(yaw) * speed,
   }
 }

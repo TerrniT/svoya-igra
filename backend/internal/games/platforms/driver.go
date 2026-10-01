@@ -15,7 +15,7 @@ const (
 	gridSize      = 3
 	platformCount = 9
 	spacing       = 2.45
-	landRadius    = 1.14
+	landRadius    = 1.28
 	restY         = 0.38
 	hazardY       = -0.45
 	statusAim     = "aim"

@@ -1,10 +1,11 @@
 import * as CANNON from 'cannon-es'
 import {
   FIGURE_RADIUS,
+  GRAVITY_Y,
   HAZARD_Y,
   PLATFORM_COUNT,
   PLATFORM_HEIGHT,
-  PLATFORM_SIZE,
+  PLATFORM_PHYS,
   cellCenter,
   shotVelocity,
   type Vec3,
@@ -42,11 +43,11 @@ export class PlatformSim {
   load(present: boolean[], figures: Record<string, Vec3>, living: string[]) {
     const stone = new CANNON.Material('stone')
     const pawn = new CANNON.Material('pawn')
-    const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -18, 0) })
+    const world = new CANNON.World({ gravity: new CANNON.Vec3(0, GRAVITY_Y, 0) })
     world.broadphase = new CANNON.SAPBroadphase(world)
     world.allowSleep = false
     world.addContactMaterial(new CANNON.ContactMaterial(pawn, stone, {
-      friction: 0.72,
+      friction: 0.7,
       restitution: 0.04,
     }))
     world.addContactMaterial(new CANNON.ContactMaterial(pawn, pawn, {
@@ -61,7 +62,7 @@ export class PlatformSim {
       const center = cellCenter(index)
       const body = new CANNON.Body({
         mass: 0,
-        shape: new CANNON.Box(new CANNON.Vec3(PLATFORM_SIZE / 2, PLATFORM_HEIGHT / 2, PLATFORM_SIZE / 2)),
+        shape: new CANNON.Box(new CANNON.Vec3(PLATFORM_PHYS / 2, PLATFORM_HEIGHT / 2, PLATFORM_PHYS / 2)),
         position: new CANNON.Vec3(center.x, 0, center.z),
         material: stone,
       })
@@ -76,8 +77,8 @@ export class PlatformSim {
         mass: 0.08,
         shape: new CANNON.Sphere(FIGURE_RADIUS),
         material: pawn,
-        linearDamping: 0.12,
-        angularDamping: 0.4,
+        linearDamping: 0.14,
+        angularDamping: 0.45,
         allowSleep: false,
       })
       body.position.set(pos.x, pos.y, pos.z)
@@ -89,7 +90,7 @@ export class PlatformSim {
       const current = this.bodies.get(this.currentId)
       if (!current)
         return
-      const drag = 1.05
+      const drag = 1.15
       const scale = Math.max(0, 1 - drag * world.dt)
       current.velocity.x *= scale
       current.velocity.z *= scale
