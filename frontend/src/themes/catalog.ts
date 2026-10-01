@@ -1,4 +1,4 @@
-export type ThemeId = 'studio' | 'paper' | 'leopard' | 'links' | 'deep'
+export type ThemeId = 'studio' | 'paper' | 'leopard' | 'links' | 'deep' | 'rift'
 
 export interface ThemeMeta {
   id: ThemeId
@@ -37,6 +37,12 @@ export const THEMES: Record<ThemeId, ThemeMeta> = {
     id: 'deep',
     name: 'Глубокая ночь',
     description: 'Чёрный фон и белый контраст для глубоких вопросов',
+    kind: 'thematic',
+  },
+  rift: {
+    id: 'rift',
+    name: 'Пропасть',
+    description: 'Камень, пустота и трещины для платформ',
     kind: 'thematic',
   },
 }

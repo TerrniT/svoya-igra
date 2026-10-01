@@ -206,6 +206,44 @@ html[data-theme="leopard"] {
   --sidebar-ring: oklch(0.78 0.155 78);
 }
 
+html[data-theme="rift"] {
+  --background: oklch(0.13 0.03 280);
+  --foreground: oklch(0.95 0.02 90);
+  --card: oklch(0.18 0.03 275);
+  --card-foreground: oklch(0.95 0.02 90);
+  --popover: oklch(0.16 0.03 275);
+  --popover-foreground: oklch(0.95 0.02 90);
+  --primary: oklch(0.82 0.14 75);
+  --primary-foreground: oklch(0.18 0.03 80);
+  --btn-edge: oklch(0.42 0.1 70);
+  --btn-edge-muted: oklch(0.22 0.03 275);
+  --btn-edge-destructive: oklch(0.32 0.14 25);
+  --secondary: oklch(0.24 0.03 275);
+  --secondary-foreground: oklch(0.95 0.02 90);
+  --muted: oklch(0.22 0.025 275);
+  --muted-foreground: oklch(0.74 0.03 250);
+  --accent: oklch(0.28 0.04 275);
+  --accent-foreground: oklch(0.95 0.02 90);
+  --destructive: oklch(0.7 0.18 25);
+  --border: oklch(0.48 0.05 280 / 42%);
+  --input: oklch(0.4 0.04 280 / 40%);
+  --ring: oklch(0.82 0.14 75);
+  --chart-1: oklch(0.82 0.14 75);
+  --chart-2: oklch(0.68 0.1 250);
+  --chart-3: oklch(0.5 0.06 280);
+  --chart-4: oklch(0.36 0.04 275);
+  --chart-5: oklch(0.24 0.03 275);
+  --radius: 0.8rem;
+  --sidebar: oklch(0.16 0.03 275);
+  --sidebar-foreground: oklch(0.95 0.02 90);
+  --sidebar-primary: oklch(0.82 0.14 75);
+  --sidebar-primary-foreground: oklch(0.18 0.03 80);
+  --sidebar-accent: oklch(0.24 0.03 275);
+  --sidebar-accent-foreground: oklch(0.95 0.02 90);
+  --sidebar-border: oklch(0.48 0.05 280 / 42%);
+  --sidebar-ring: oklch(0.82 0.14 75);
+}
+
 html[data-theme="links"] {
   --background: oklch(0.16 0.03 155);
   --foreground: oklch(0.95 0.02 95);
@@ -282,6 +320,13 @@ html[data-theme="leopard"] .theme-wash {
     radial-gradient(1200px 600px at 12% -10%, oklch(0.35 0.08 70 / 0.35), transparent 55%),
     radial-gradient(900px 500px at 100% 0%, oklch(0.28 0.06 40 / 0.4), transparent 50%),
     linear-gradient(180deg, oklch(0.2 0.03 50), oklch(0.14 0.025 45));
+}
+
+html[data-theme="rift"] .theme-wash {
+  background:
+    radial-gradient(900px 420px at 8% -8%, oklch(0.45 0.1 75 / 0.22), transparent 55%),
+    radial-gradient(800px 500px at 100% 0%, oklch(0.28 0.06 280 / 0.45), transparent 50%),
+    linear-gradient(180deg, oklch(0.16 0.03 280), oklch(0.08 0.02 280));
 }
 
 html[data-theme="links"] .theme-wash {
@@ -418,6 +463,11 @@ html[data-theme="leopard"] .paw-mark {
   text-transform: none;
 }
 
+[data-game="platforms"] .game-ident-name {
+  font-family: var(--font-board);
+  letter-spacing: 0.14em;
+}
+
 .game-ident[data-game="hub"] {
   border-radius: 999px;
   background:
@@ -452,6 +502,12 @@ html[data-theme="leopard"] .paw-mark {
 
 .game-ident[data-game="deep-question"] {
   border-radius: 1.15rem 0.3rem 1.15rem 0.3rem;
+}
+
+.game-ident[data-game="platforms"] {
+  border-radius: 0.55rem;
+  background:
+    linear-gradient(160deg, color-mix(in oklch, var(--primary) 40%, var(--card)), color-mix(in oklch, var(--card) 80%, black));
 }
 
 button.studio-deck {
