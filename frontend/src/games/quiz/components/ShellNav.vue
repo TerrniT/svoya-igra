@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterLink, useRoute } from 'vue-router'
-import { Button } from '@/components/ui/button'
+import { BookOpenIcon, LayoutGridIcon } from '@lucide/vue'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { usePlayState } from '@/composables/usePlayState'
 
 const route = useRoute()
@@ -9,11 +10,17 @@ const { canEditBank } = usePlayState()
 
 <template>
   <template v-if="canEditBank && route.name !== 'join'">
-    <Button variant="ghost" size="sm" as-child>
-      <RouterLink to="/game">Поле</RouterLink>
-    </Button>
-    <Button variant="outline" size="sm" as-child>
-      <RouterLink to="/admin">Админка</RouterLink>
-    </Button>
+    <DropdownMenuItem as-child>
+      <RouterLink to="/game">
+        <LayoutGridIcon />
+        Игровое поле
+      </RouterLink>
+    </DropdownMenuItem>
+    <DropdownMenuItem as-child>
+      <RouterLink to="/admin">
+        <BookOpenIcon />
+        Вопросы
+      </RouterLink>
+    </DropdownMenuItem>
   </template>
 </template>

@@ -3,7 +3,7 @@ import type { GameId } from '@/games/types'
 export type RoomRole = 'host' | 'player'
 
 export type ServerNotice =
-  | { kind: 'revealed' | 'awarded' | 'skip' | 'closed' | 'guessed', playerName?: string, value?: number }
+  | { kind: 'revealed' | 'awarded' | 'skip' | 'closed' | 'guessed' | 'kicked', playerName?: string, value?: number }
 
 export interface RoomPlayer {
   id: string
@@ -24,6 +24,7 @@ export interface RoomSnapshot {
   gameId: GameId
   themeId: string
   phase: string
+  paused?: boolean
   session: RoomSession
   payload: unknown
 }
@@ -34,6 +35,9 @@ export type CoreClientMessage =
   | { type: 'reconnect', code: string, deviceId: string }
   | { type: 'leave' }
   | { type: 'kick', playerId: string }
+  | { type: 'pause' }
+  | { type: 'resume' }
+  | { type: 'endGame' }
 
 /** Game-specific messages are opaque to the room core */
 export type ClientMessage = CoreClientMessage | ({ type: string } & Record<string, unknown>)

@@ -167,3 +167,113 @@ func TestQuizHidesAnswersUntilReveal(t *testing.T) {
 		}
 	}
 }
+
+func TestHostPauseEndAndKick(t *testing.T) {
+	mod, err := games.NewCatalog().Resolve("whoami")
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, err := mod.NormalizeSettings(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := room.NewEngine(mod.Driver())
+	host := &memClient{key: "host"}
+	guest := &memClient{key: "guest"}
+	if err := engine.Create("1234", "Лео", "device-host", "whoami", "studio", settings, host); err != nil {
+		t.Fatal(err)
+	}
+	join, _ := json.Marshal(map[string]any{"type": "join", "name": "Мара", "deviceId": "device-guest", "code": "1234"})
+	if err := engine.Handle(guest, join); err != nil {
+		t.Fatal(err)
+	}
+
+	pause, _ := json.Marshal(map[string]any{"type": "pause"})
+	if err := engine.Handle(host, pause); err == nil {
+		t.Fatal("pause in lobby should fail")
+	}
+
+	start, _ := json.Marshal(map[string]any{"type": "start"})
+	if err := engine.Handle(host, start); err != nil {
+		t.Fatal(err)
+	}
+	if err := engine.Handle(guest, pause); err == nil {
+		t.Fatal("guest should not pause")
+	}
+	if err := engine.Handle(host, pause); err != nil {
+		t.Fatal(err)
+	}
+	if snap := lastState(t, guest); !snap.Paused || snap.Phase != "play" {
+		t.Fatalf("expected paused play, got phase=%s paused=%v", snap.Phase, snap.Paused)
+	}
+
+	guess, _ := json.Marshal(map[string]any{"type": "markGuessed", "playerId": lastHello(t, guest).PlayerID})
+	if err := engine.Handle(host, guess); err == nil {
+		t.Fatal("game actions should fail while paused")
+	}
+
+	resume, _ := json.Marshal(map[string]any{"type": "resume"})
+	if err := engine.Handle(host, resume); err != nil {
+		t.Fatal(err)
+	}
+
+	end, _ := json.Marshal(map[string]any{"type": "endGame"})
+	if err := engine.Handle(host, end); err != nil {
+		t.Fatal(err)
+	}
+	if snap := lastState(t, host); snap.Phase != "lobby" || snap.Paused {
+		t.Fatalf("expected lobby after end, got phase=%s paused=%v", snap.Phase, snap.Paused)
+	}
+
+	if err := engine.Handle(host, start); err != nil {
+		t.Fatal(err)
+	}
+	kick, _ := json.Marshal(map[string]any{"type": "kick", "playerId": lastHello(t, guest).PlayerID})
+	if err := engine.Handle(host, kick); err != nil {
+		t.Fatal(err)
+	}
+	foundKick := false
+	for _, msg := range guest.msgs {
+		if msg.Type == "notice" && msg.Kind == "kicked" {
+			foundKick = true
+			break
+		}
+	}
+	if !foundKick {
+		t.Fatal("guest should get kicked notice")
+	}
+	if snap := lastState(t, host); len(snap.Session.Players) != 1 {
+		t.Fatalf("expected 1 player after kick, got %d", len(snap.Session.Players))
+	}
+}
+
+func TestPlayerLeaveKeepsRoom(t *testing.T) {
+	mod, err := games.NewCatalog().Resolve("whoami")
+	if err != nil {
+		t.Fatal(err)
+	}
+	settings, err := mod.NormalizeSettings(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine := room.NewEngine(mod.Driver())
+	host := &memClient{key: "host"}
+	guest := &memClient{key: "guest"}
+	if err := engine.Create("1234", "Лео", "device-host", "whoami", "studio", settings, host); err != nil {
+		t.Fatal(err)
+	}
+	join, _ := json.Marshal(map[string]any{"type": "join", "name": "Мара", "deviceId": "device-guest", "code": "1234"})
+	if err := engine.Handle(guest, join); err != nil {
+		t.Fatal(err)
+	}
+	leave, _ := json.Marshal(map[string]any{"type": "leave"})
+	if err := engine.Handle(guest, leave); err != nil {
+		t.Fatal(err)
+	}
+	if engine.Closed() {
+		t.Fatal("room should stay open after player leave")
+	}
+	if snap := lastState(t, host); len(snap.Session.Players) != 1 {
+		t.Fatalf("expected host only, got %d", len(snap.Session.Players))
+	}
+}

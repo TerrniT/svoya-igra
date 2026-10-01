@@ -29,6 +29,7 @@ type RoomState struct {
 	HostPlayerID string
 	Session      protocol.RoomSession
 	Phase        string
+	Paused       bool
 	Payload      any
 	Settings     json.RawMessage
 }
@@ -169,7 +170,7 @@ func (e *Engine) Handle(wire WireClient, raw json.RawMessage) error {
 		e.removePlayer(e.room, msg.PlayerID)
 		for key, item := range e.room.clients {
 			if item.playerID == msg.PlayerID {
-				item.Send(protocol.ErrorMessage(text.Kicked))
+				item.Send(protocol.NoticeMessage(protocol.Notice{Kind: "kicked"}))
 				delete(e.room.clients, key)
 				item.Close()
 			}
@@ -178,8 +179,36 @@ func (e *Engine) Handle(wire WireClient, raw json.RawMessage) error {
 		return nil
 	}
 
+	if head.Type == "pause" || head.Type == "resume" {
+		if !e.requireHost(current) {
+			return text.Error(text.PauseHostOnly)
+		}
+		if e.room.Phase == e.room.driver.InitialPhase() {
+			return text.Error(text.GameNotRunning)
+		}
+		e.room.Paused = head.Type == "pause"
+		e.broadcastState(e.room)
+		return nil
+	}
+
+	if head.Type == "endGame" {
+		if !e.requireHost(current) {
+			return text.Error(text.EndGameHostOnly)
+		}
+		if e.room.Phase == e.room.driver.InitialPhase() && !e.room.Paused {
+			return text.Error(text.GameNotRunning)
+		}
+		e.endGame(e.room)
+		e.broadcastState(e.room)
+		return nil
+	}
+
 	if head.Type == "join" || head.Type == "reconnect" || head.Type == "leave" || head.Type == "kick" {
 		return nil
+	}
+
+	if e.room.Paused {
+		return text.Error(text.GamePaused)
 	}
 
 	result, err := e.room.driver.Reduce(raw, Context{
@@ -256,6 +285,17 @@ func (e *Engine) applyAfterDisconnect(live *liveRoom) {
 	e.applyResult(live, *result)
 }
 
+func (e *Engine) endGame(live *liveRoom) {
+	live.Phase = live.driver.InitialPhase()
+	live.Paused = false
+	live.Session.StartedAt = nil
+	scores := map[string]int{}
+	for _, player := range live.Session.Players {
+		scores[player.ID] = 0
+	}
+	live.Session.Scores = scores
+}
+
 func (e *Engine) removePlayer(live *liveRoom, playerID string) {
 	next := live.Session.Players[:0]
 	for _, player := range live.Session.Players {
@@ -326,6 +366,7 @@ func (e *Engine) snapshotFor(live *liveRoom, item *client) protocol.RoomSnapshot
 		GameID:  live.GameID,
 		ThemeID: live.ThemeID,
 		Phase:   live.Phase,
+		Paused:  live.Paused,
 		Session: live.Session,
 		Payload: payload,
 	})

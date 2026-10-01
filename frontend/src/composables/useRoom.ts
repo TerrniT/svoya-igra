@@ -48,6 +48,7 @@ function useRoomBase() {
   const hosting = computed(() => isHost.value && connected.value)
   const code = computed(() => snapshot.value?.code ?? '')
   const phase = computed(() => snapshot.value?.phase ?? null)
+  const paused = computed(() => Boolean(snapshot.value?.paused))
   const gameId = computed(() => snapshot.value?.gameId ?? null)
   const themeId = computed(() => snapshot.value?.themeId ?? null)
   const me = computed(() => snapshot.value?.session.players.find(player => player.id === playerId.value))
@@ -78,9 +79,9 @@ function useRoomBase() {
 
     if (message.type === 'notice') {
       lastNotice.value = message
-      if (message.kind === 'closed') {
+      if (message.kind === 'closed' || message.kind === 'kicked') {
         forgetRoom()
-        restoreError.value = 'Такой комнаты нет'
+        restoreError.value = message.kind === 'closed' ? 'Такой комнаты нет' : ''
       }
       return
     }
@@ -312,6 +313,18 @@ function useRoomBase() {
     send({ type: 'kick', playerId: targetId })
   }
 
+  function pause() {
+    send({ type: 'pause' })
+  }
+
+  function resume() {
+    send({ type: 'resume' })
+  }
+
+  function endGame() {
+    send({ type: 'endGame' })
+  }
+
   function sendGame(message: { type: string } & Record<string, unknown>) {
     send(message)
   }
@@ -329,6 +342,7 @@ function useRoomBase() {
     isHost,
     code,
     phase,
+    paused,
     gameId,
     themeId,
     me,
@@ -352,6 +366,9 @@ function useRoomBase() {
     skip,
     markGuessed,
     kick,
+    pause,
+    resume,
+    endGame,
     sendGame,
   }
 }

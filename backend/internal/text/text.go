@@ -36,5 +36,9 @@ const (
 	KickHostOnly       = "Только ведущий удаляет игроков"
 	KickHostForbidden  = "Ведущего удалить нельзя"
 	Kicked             = "Вас удалили из комнаты"
+	PauseHostOnly      = "Паузу ставит только ведущий"
+	EndGameHostOnly    = "Закончить игру может только ведущий"
+	GamePaused         = "Игра на паузе"
+	GameNotRunning     = "Сейчас нет партии, которую можно остановить"
 	UnknownGame        = "Неизвестная игра: %s"
 )

@@ -72,6 +72,10 @@ watch(() => room.lastNotice.value, (notice) => {
     toast.success(notice.playerName ? `${notice.playerName} угадал!` : 'Угадано!')
   if (notice.kind === 'closed')
     router.replace({ name: 'home' })
+  if (notice.kind === 'kicked') {
+    toast.message('Вас удалили из комнаты')
+    router.replace({ name: 'home' })
+  }
 })
 
 watch(() => room.error.value, (message) => {

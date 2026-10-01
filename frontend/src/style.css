@@ -342,6 +342,238 @@ html[data-theme="leopard"] .paw-mark {
     oklch(0.22 0.03 48);
 }
 
+.shell-masthead {
+  border-bottom: 1px solid color-mix(in oklch, var(--border) 75%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--card) 55%, transparent), color-mix(in oklch, var(--background) 78%, transparent));
+  backdrop-filter: blur(18px);
+}
+
+.game-ident-link {
+  min-width: 0;
+  text-decoration: none;
+}
+
+.game-ident {
+  display: grid;
+  width: 2.55rem;
+  height: 2.55rem;
+  flex-shrink: 0;
+  place-items: center;
+  border: 1px solid color-mix(in oklch, var(--primary) 42%, transparent);
+  background: color-mix(in oklch, var(--card) 88%, black);
+  color: var(--primary);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.16);
+  transition: transform 200ms ease;
+}
+
+.game-ident-link:hover .game-ident {
+  transform: rotate(-8deg) scale(1.04);
+}
+
+.game-ident-glyph {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.game-ident-kicker {
+  margin-bottom: 0.28rem;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+}
+
+.game-ident-name {
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--foreground);
+}
+
+[data-game="quiz"] .game-ident-name {
+  font-family: var(--font-board);
+  letter-spacing: 0.12em;
+}
+
+[data-game="golf"] .game-ident-name {
+  font-family: var(--font-golf);
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+[data-game="whoami"] .game-ident-name {
+  font-style: italic;
+  letter-spacing: 0.14em;
+}
+
+[data-game="deep-question"] .game-ident-name {
+  letter-spacing: 0.06em;
+  text-transform: none;
+}
+
+.game-ident[data-game="hub"] {
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, var(--primary) 0 28%, transparent 29%),
+    color-mix(in oklch, var(--card) 90%, black);
+}
+
+.game-ident[data-game="hub"] .game-ident-glyph {
+  display: none;
+}
+
+.game-ident[data-game="quiz"] {
+  border-radius: 0.45rem;
+  transform: rotate(-6deg);
+  background:
+    linear-gradient(160deg, color-mix(in oklch, var(--primary) 55%, white), var(--primary) 55%, color-mix(in oklch, var(--primary) 70%, black));
+  color: var(--primary-foreground);
+}
+
+.game-ident[data-game="whoami"] {
+  border-radius: 999px;
+  border-style: dashed;
+  background: color-mix(in oklch, var(--card) 70%, transparent);
+}
+
+.game-ident[data-game="golf"] {
+  border-radius: 40% 60% 42% 58%;
+  background:
+    radial-gradient(circle at 30% 30%, color-mix(in oklch, var(--primary) 35%, white), transparent 42%),
+    color-mix(in oklch, var(--card) 82%, black);
+}
+
+.game-ident[data-game="deep-question"] {
+  border-radius: 1.15rem 0.3rem 1.15rem 0.3rem;
+}
+
+button.studio-deck {
+  height: auto;
+  min-height: 2.55rem;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.12rem;
+  padding-block: 0.28rem;
+  padding-inline: 0.7rem 0.85rem;
+}
+
+.studio-deck-label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: var(--muted-foreground);
+}
+
+.studio-deck-code {
+  font-family: var(--font-board);
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+  line-height: 1.05;
+  color: var(--primary);
+}
+
+.studio-deck-code-idle {
+  letter-spacing: 0.28em;
+}
+
+.studio-deck-live {
+  border-color: color-mix(in oklch, var(--primary) 50%, var(--btn-edge-muted));
+}
+
+.studio-deck-paused {
+  animation: deck-pulse 1.7s ease-in-out infinite;
+}
+
+.pause-broadcast {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  min-height: calc(100dvh - 6.5rem);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  overflow: hidden;
+  padding: 2.5rem 1rem 4rem;
+  text-align: center;
+}
+
+.pause-broadcast::before,
+.pause-broadcast::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.pause-broadcast::before {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      oklch(0 0 0 / 0.08) 3px,
+      oklch(0 0 0 / 0.08) 4px
+    );
+  opacity: 0.7;
+}
+
+.pause-broadcast::after {
+  background:
+    radial-gradient(ellipse at 50% 40%, color-mix(in oklch, var(--primary) 18%, transparent), transparent 55%);
+}
+
+.pause-kicker,
+.pause-word,
+.pause-copy {
+  position: relative;
+  z-index: 1;
+}
+
+.pause-kicker {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.pause-word {
+  font-family: var(--font-board);
+  font-size: clamp(4.2rem, 18vw, 9.5rem);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  line-height: 0.85;
+  text-transform: uppercase;
+  color: var(--foreground);
+  animation: pause-breathe 2.6s ease-in-out infinite;
+}
+
+.pause-copy {
+  max-width: 22rem;
+  font-size: 0.95rem;
+  color: var(--muted-foreground);
+}
+
+@keyframes deck-pulse {
+  0%, 100% { filter: none; }
+  50% { filter: brightness(1.12); }
+}
+
+@keyframes pause-breathe {
+  0%, 100% { opacity: 0.86; letter-spacing: 0.16em; }
+  50% { opacity: 1; letter-spacing: 0.22em; }
+}
+
 .score-chip {
   display: flex;
   min-width: 0;
@@ -789,8 +1021,12 @@ html[data-theme="leopard"] .paw-mark {
 @media (prefers-reduced-motion: reduce) {
   .status-dot,
   .score-chip-chooser,
-  .board-player-turn {
+  .board-player-turn,
+  .studio-deck-paused,
+  .pause-word,
+  .game-ident {
     animation: none;
+    transform: none;
   }
 
   [data-slot="button"],

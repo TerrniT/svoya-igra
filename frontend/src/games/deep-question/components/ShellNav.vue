@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { RouterLink } from 'vue-router'
-import { Button } from '@/components/ui/button'
+import { RouterLink, useRoute } from 'vue-router'
+import { MessageCircleHeartIcon } from '@lucide/vue'
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu'
+
+const route = useRoute()
 </script>
 
 <template>
-  <Button variant="outline" size="sm" as-child>
-    <RouterLink to="/deep-question">Вопросы</RouterLink>
-  </Button>
+  <DropdownMenuItem v-if="route.name !== 'deep-question-play'" as-child>
+    <RouterLink to="/deep-question">
+      <MessageCircleHeartIcon />
+      К вопросам
+    </RouterLink>
+  </DropdownMenuItem>
 </template>

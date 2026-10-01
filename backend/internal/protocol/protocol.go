@@ -26,6 +26,7 @@ type RoomSnapshot struct {
 	GameID  string      `json:"gameId"`
 	ThemeID string      `json:"themeId"`
 	Phase   string      `json:"phase"`
+	Paused  bool        `json:"paused"`
 	Session RoomSession `json:"session"`
 	Payload any         `json:"payload"`
 }

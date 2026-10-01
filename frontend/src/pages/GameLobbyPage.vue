@@ -275,7 +275,9 @@ const inThisGameRoom = computed(() =>
             </ul>
           </CardContent>
           <CardFooter class="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
-            <Button variant="ghost" class="w-full sm:w-auto" @click="room.leaveRoom()">Выйти</Button>
+            <Button variant="ghost" class="w-full sm:w-auto" @click="room.leaveRoom()">
+              {{ isHost ? 'Закрыть комнату' : 'Выйти' }}
+            </Button>
             <div v-if="isHost" class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap">
               <Button v-if="gameMeta.id === 'quiz'" variant="outline" class="w-full sm:w-auto" as-child>
                 <RouterLink to="/admin">К вопросам</RouterLink>
