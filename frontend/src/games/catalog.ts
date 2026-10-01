@@ -52,7 +52,7 @@ export const GAME_CATALOG: GameMeta[] = [
   {
     id: 'platforms',
     name: 'Платформы',
-    description: 'Девять платформ. Толкните фигуру на соседнюю — потом пол уходит. Кто остался, тот и выиграл.',
+    description: 'Девять платформ в пропасти. Толкните фигуру, как в гольфе — потом пол уходит.',
     minPlayers: 2,
     hostPlays: true,
     supportsLocal: false,

@@ -2,6 +2,7 @@ package platforms
 
 import (
 	"encoding/json"
+	"math"
 	"math/rand/v2"
 	"time"
 
@@ -13,18 +14,29 @@ import (
 const (
 	gridSize      = 3
 	platformCount = 9
-	statusMove    = "move"
+	spacing       = 2.45
+	landRadius    = 1.14
+	restY         = 0.38
+	hazardY       = -0.45
+	statusAim     = "aim"
+	statusRoll    = "roll"
 	statusWarning = "warning"
-	statusShove   = "shove"
 )
 
 var startSeats = []int{0, 8, 2, 6, 4, 1, 7, 3, 5}
+
+type Vec struct {
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
+	Z float64 `json:"z"`
+}
 
 type Payload struct {
 	Order      []string       `json:"order"`
 	Living     []string       `json:"living"`
 	Eliminated []string       `json:"eliminated"`
-	Positions  map[string]int `json:"positions"`
+	Cells      map[string]int `json:"cells"`
+	Figures    map[string]Vec `json:"figures"`
 	TurnID     string         `json:"turnId"`
 	Moved      []string       `json:"moved"`
 	Status     string         `json:"status"`
@@ -33,6 +45,12 @@ type Payload struct {
 	Round      int            `json:"round"`
 	Seed       int64          `json:"seed"`
 	WinnerID   string         `json:"winnerId"`
+	Shot       int            `json:"shot"`
+	Yaw        float64        `json:"yaw"`
+	Power      float64        `json:"power"`
+	Lie        Vec            `json:"lie"`
+	Velocity   Vec            `json:"velocity"`
+	Note       string         `json:"note"`
 }
 
 type Driver struct{}
@@ -59,9 +77,21 @@ func (d Driver) Reduce(raw json.RawMessage, ctx gamekit.Context) (gamekit.Result
 		return gamekit.Result{}, err
 	}
 	var msg struct {
-		Type     string `json:"type"`
-		To       int    `json:"to"`
-		PlayerID string `json:"playerId"`
+		Type     string         `json:"type"`
+		To       int            `json:"to"`
+		PlayerID string         `json:"playerId"`
+		Yaw      float64        `json:"yaw"`
+		Power    float64        `json:"power"`
+		Shot     int            `json:"shot"`
+		X        float64        `json:"x"`
+		Y        float64        `json:"y"`
+		Z        float64        `json:"z"`
+		VX       float64        `json:"vx"`
+		VY       float64        `json:"vy"`
+		VZ       float64        `json:"vz"`
+		Hazard   bool           `json:"hazard"`
+		Fallen   []string       `json:"fallen"`
+		Figures  map[string]Vec `json:"figures"`
 	}
 	if err := json.Unmarshal(raw, &msg); err != nil {
 		return gamekit.Result{}, text.Error(text.BadMessage)
@@ -98,32 +128,61 @@ func (d Driver) Reduce(raw json.RawMessage, ctx gamekit.Context) (gamekit.Result
 
 	switch msg.Type {
 	case "push":
-		if payload.Status != statusMove {
+		if payload.Status != statusAim {
 			return gamekit.Result{}, text.Error(MustPush)
 		}
 		if ctx.ClientPlayerID != payload.TurnID {
 			return gamekit.Result{}, text.Error(OtherPlayersTurn)
 		}
-		if err := applyPush(&payload, ctx.ClientPlayerID, msg.To); err != nil {
+		if !contains(payload.Living, ctx.ClientPlayerID) {
+			return gamekit.Result{}, text.Error(PlayerGone)
+		}
+		yaw, err := readAngle(msg.Yaw)
+		if err != nil {
 			return gamekit.Result{}, err
 		}
-		return afterMove(payload, ctx.Players)
-
-	case "shove":
-		if payload.Status != statusShove {
-			return gamekit.Result{}, text.Error(BadShove)
-		}
-		if ctx.ClientPlayerID != payload.TurnID {
-			return gamekit.Result{}, text.Error(OtherPlayersTurn)
-		}
-		if err := applyShove(&payload, ctx.ClientPlayerID, msg.PlayerID); err != nil {
+		power, err := readPower(msg.Power)
+		if err != nil {
 			return gamekit.Result{}, err
 		}
-		if done := finishIfWon(&payload, ctx.Players); done != nil {
-			return *done, nil
-		}
-		payload.TurnID = nextLiving(payload, payload.TurnID)
+		payload.Yaw = yaw
+		payload.Power = power
+		payload.Shot++
+		payload.Status = statusRoll
+		payload.Note = ""
+		payload.Lie = payload.Figures[payload.TurnID]
+		payload.Velocity = Vec{}
 		return gamekit.Result{Payload: payload, Scores: scoreTable(payload, ctx.Players)}, nil
+
+	case "figure":
+		if !ctx.IsHost {
+			return gamekit.Result{}, text.Error(HostReportsFigure)
+		}
+		if payload.Status != statusRoll || msg.Shot != payload.Shot {
+			return gamekit.Result{Volatile: true}, nil
+		}
+		x, y, z, err := readVec(msg.X, msg.Y, msg.Z)
+		if err != nil {
+			return gamekit.Result{}, err
+		}
+		vx, vy, vz, err := readVec(msg.VX, msg.VY, msg.VZ)
+		if err != nil {
+			return gamekit.Result{}, err
+		}
+		if payload.TurnID != "" {
+			payload.Figures[payload.TurnID] = Vec{X: x, Y: y, Z: z}
+		}
+		payload.Velocity = Vec{X: vx, Y: vy, Z: vz}
+		return gamekit.Result{Payload: payload, Volatile: true}, nil
+
+	case "settle":
+		if !ctx.IsHost {
+			return gamekit.Result{}, text.Error(HostReportsShot)
+		}
+		if payload.Status != statusRoll || msg.Shot != payload.Shot {
+			return gamekit.Result{Volatile: true}, nil
+		}
+		return settle(payload, ctx.Players, msg.X, msg.Y, msg.Z, msg.Hazard, msg.Fallen, msg.Figures)
 
 	case "vanish":
 		if !ctx.IsHost {
@@ -143,15 +202,11 @@ func (d Driver) Reduce(raw json.RawMessage, ctx gamekit.Context) (gamekit.Result
 		if !ctx.IsHost {
 			return gamekit.Result{}, text.Error(HostSkipsTurn)
 		}
-		if payload.Status == statusWarning {
+		if payload.Status == statusWarning || payload.Status == statusRoll {
 			return gamekit.Result{}, text.Error(CannotSkipNow)
 		}
 		if payload.TurnID == "" {
 			return gamekit.Result{}, text.Error(CannotSkipNow)
-		}
-		if payload.Status == statusShove {
-			payload.TurnID = nextLiving(payload, payload.TurnID)
-			return gamekit.Result{Payload: payload, Scores: scoreTable(payload, ctx.Players)}, nil
 		}
 		if err := stay(&payload, payload.TurnID); err != nil {
 			return gamekit.Result{}, err
@@ -185,19 +240,21 @@ func (Driver) OnPlayerRemoved(payload any, playerID string) (any, error) {
 	state.Living = filter(state.Living, playerID)
 	state.Eliminated = filter(state.Eliminated, playerID)
 	state.Moved = filter(state.Moved, playerID)
-	delete(state.Positions, playerID)
+	delete(state.Cells, playerID)
+	delete(state.Figures, playerID)
 	if state.WinnerID == playerID {
 		state.WinnerID = ""
+	}
+	if wasTurn && state.Status == statusRoll {
+		state.Status = statusAim
+		state.Shot++
+		state.Velocity = Vec{}
 	}
 	if wasTurn {
 		state.TurnID = nextLiving(state, playerID)
 	}
 	if len(state.Living) == 1 {
 		state.WinnerID = state.Living[0]
-	}
-	if len(state.Living) <= 1 && state.Status == statusWarning {
-		state.Status = statusMove
-		state.Marked = []int{}
 	}
 	return state, nil
 }
@@ -215,73 +272,94 @@ func emptyPayload() Payload {
 		Order:      []string{},
 		Living:     []string{},
 		Eliminated: []string{},
-		Positions:  map[string]int{},
+		Cells:      map[string]int{},
+		Figures:    map[string]Vec{},
 		Moved:      []string{},
-		Status:     statusMove,
+		Status:     statusAim,
 		Marked:     []int{},
 		Present:    fullBoard(),
-		Round:      0,
 	}
 }
 
 func openRound(players []protocol.RoomPlayer) Payload {
 	order := make([]string, 0, len(players))
 	living := make([]string, 0, len(players))
-	positions := map[string]int{}
+	cells := map[string]int{}
+	figures := map[string]Vec{}
 	for i, player := range players {
+		seat := startSeats[i%len(startSeats)]
 		order = append(order, player.ID)
 		living = append(living, player.ID)
-		positions[player.ID] = startSeats[i%len(startSeats)]
+		cells[player.ID] = seat
+		figures[player.ID] = cellCenter(seat)
 	}
 	turnID := ""
 	if len(order) > 0 {
 		turnID = order[0]
 	}
+	lie := Vec{}
+	if turnID != "" {
+		lie = figures[turnID]
+	}
 	return Payload{
 		Order:      order,
 		Living:     living,
 		Eliminated: []string{},
-		Positions:  positions,
+		Cells:      cells,
+		Figures:    figures,
 		TurnID:     turnID,
 		Moved:      []string{},
-		Status:     statusMove,
+		Status:     statusAim,
 		Marked:     []int{},
 		Present:    fullBoard(),
 		Round:      1,
 		Seed:       time.Now().UnixNano(),
+		Lie:        lie,
+		Power:      0.55,
 	}
 }
 
-func applyPush(payload *Payload, playerID string, to int) error {
-	if !contains(payload.Living, playerID) {
-		return text.Error(PlayerGone)
+func settle(payload Payload, players []protocol.RoomPlayer, x, y, z float64, hazard bool, fallen []string, extras map[string]Vec) (gamekit.Result, error) {
+	px, py, pz, err := readVec(x, y, z)
+	if err != nil {
+		return gamekit.Result{}, err
 	}
-	if contains(payload.Moved, playerID) {
-		return text.Error(AlreadyMoved)
-	}
-	from, ok := payload.Positions[playerID]
-	if !ok {
-		return text.Error(PlayerGone)
-	}
-	targets := legalPushTargets(*payload, playerID)
-	if len(targets) == 0 {
-		if to != from {
-			return text.Error(NeedAdjacent)
+	for id, pos := range extras {
+		nx, ny, nz, err := readVec(pos.X, pos.Y, pos.Z)
+		if err != nil {
+			continue
 		}
-		return stay(payload, playerID)
+		payload.Figures[id] = Vec{X: nx, Y: ny, Z: nz}
 	}
-	if !containsInt(targets, to) {
-		if to < 0 || to >= platformCount || !payload.Present[to] {
-			return text.Error(PlatformGone)
+	id := payload.TurnID
+	fell := hazard || py < hazardY
+	cell := cellAt(px, pz, payload.Present)
+	if fell || cell < 0 {
+		payload.Figures[id] = Vec{X: px, Y: py, Z: pz}
+		payload.Velocity = Vec{}
+		payload.Note = "fell"
+		eliminate(&payload, id)
+	} else {
+		spot := cellCenter(cell)
+		payload.Cells[id] = cell
+		payload.Figures[id] = spot
+		payload.Lie = spot
+		payload.Velocity = Vec{}
+		payload.Note = "landed"
+		if !contains(payload.Moved, id) {
+			payload.Moved = append(payload.Moved, id)
 		}
-		if !adjacent(from, to) {
-			return text.Error(NeedAdjacent)
-		}
-		return text.Error(BadPlatform)
 	}
-	payload.Positions[playerID] = to
-	payload.Moved = append(payload.Moved, playerID)
-	return nil
+	for _, other := range fallen {
+		if other == id || !contains(payload.Living, other) {
+			continue
+		}
+		eliminate(&payload, other)
+	}
+	if done := finishIfWon(&payload, players); done != nil {
+		return *done, nil
+	}
+	return afterMove(payload, players)
 }
 
 func stay(payload *Payload, playerID string) error {
@@ -295,33 +373,27 @@ func stay(payload *Payload, playerID string) error {
 	return nil
 }
 
-func applyShove(payload *Payload, actorID, targetID string) error {
-	if presentCount(*payload) != 1 {
-		return text.Error(BadShove)
-	}
-	if !contains(payload.Living, actorID) || !contains(payload.Living, targetID) {
-		return text.Error(PlayerGone)
-	}
-	if actorID == targetID {
-		return text.Error(BadShove)
-	}
-	if payload.Positions[actorID] != payload.Positions[targetID] {
-		return text.Error(BadShove)
-	}
-	eliminate(payload, targetID)
-	return nil
-}
-
 func afterMove(payload Payload, players []protocol.RoomPlayer) (gamekit.Result, error) {
+	if done := finishIfWon(&payload, players); done != nil {
+		return *done, nil
+	}
 	if !allLivingMoved(payload) {
 		payload.TurnID = nextUnmoved(payload)
+		payload.Status = statusAim
+		if payload.TurnID != "" {
+			payload.Lie = payload.Figures[payload.TurnID]
+		}
+		payload.Velocity = Vec{}
 		return gamekit.Result{Payload: payload, Scores: scoreTable(payload, players)}, nil
 	}
 	if presentCount(payload) <= 1 {
-		payload.Status = statusShove
+		payload.Status = statusAim
 		payload.Moved = []string{}
 		payload.Marked = []int{}
 		payload.TurnID = nextLiving(payload, payload.TurnID)
+		if payload.TurnID != "" {
+			payload.Lie = payload.Figures[payload.TurnID]
+		}
 		return gamekit.Result{Payload: payload, Scores: scoreTable(payload, players)}, nil
 	}
 	payload.Marked = pickMarked(payload)
@@ -337,12 +409,15 @@ func applyVanish(payload *Payload) {
 	}
 	fallen := []string{}
 	for _, id := range payload.Living {
-		pos, ok := payload.Positions[id]
-		if !ok || pos < 0 || pos >= platformCount || !payload.Present[pos] {
+		cell, ok := payload.Cells[id]
+		if !ok || cell < 0 || cell >= platformCount || !payload.Present[cell] {
 			fallen = append(fallen, id)
 		}
 	}
 	for _, id := range fallen {
+		pos := payload.Figures[id]
+		pos.Y = -1.2
+		payload.Figures[id] = pos
 		eliminate(payload, id)
 	}
 	payload.Marked = []int{}
@@ -351,16 +426,16 @@ func applyVanish(payload *Payload) {
 func beginNextRound(payload *Payload) {
 	payload.Round++
 	payload.Moved = []string{}
-	if presentCount(*payload) <= 1 && len(payload.Living) >= 2 {
-		payload.Status = statusShove
-	} else {
-		payload.Status = statusMove
-	}
+	payload.Status = statusAim
+	payload.Note = ""
 	if payload.TurnID == "" || !contains(payload.Living, payload.TurnID) {
 		payload.TurnID = firstLiving(*payload)
-		return
+	} else {
+		payload.TurnID = nextLiving(*payload, payload.TurnID)
 	}
-	payload.TurnID = nextLiving(*payload, payload.TurnID)
+	if payload.TurnID != "" {
+		payload.Lie = payload.Figures[payload.TurnID]
+	}
 }
 
 func eliminate(payload *Payload, playerID string) {
@@ -376,7 +451,7 @@ func finishIfWon(payload *Payload, players []protocol.RoomPlayer) *gamekit.Resul
 	payload.Living = living
 	if len(living) == 1 {
 		payload.WinnerID = living[0]
-		payload.Status = statusMove
+		payload.Status = statusAim
 		payload.Marked = []int{}
 		return &gamekit.Result{
 			Phase:   gamekit.Ptr("results"),
@@ -384,29 +459,7 @@ func finishIfWon(payload *Payload, players []protocol.RoomPlayer) *gamekit.Resul
 			Scores:  scoreTable(*payload, players),
 		}
 	}
-	if len(living) == 0 && payload.WinnerID != "" {
-		return &gamekit.Result{
-			Phase:   gamekit.Ptr("results"),
-			Payload: *payload,
-			Scores:  scoreTable(*payload, players),
-		}
-	}
 	return nil
-}
-
-func legalPushTargets(payload Payload, playerID string) []int {
-	from, ok := payload.Positions[playerID]
-	if !ok {
-		return nil
-	}
-	out := []int{}
-	for to := 0; to < platformCount; to++ {
-		if to == from || !payload.Present[to] || !adjacent(from, to) {
-			continue
-		}
-		out = append(out, to)
-	}
-	return out
 }
 
 func pickMarked(payload Payload) []int {
@@ -417,7 +470,7 @@ func pickMarked(payload Payload) []int {
 	present := presentCells(payload)
 	livingCells := map[int]int{}
 	for _, id := range payload.Living {
-		livingCells[payload.Positions[id]]++
+		livingCells[payload.Cells[id]]++
 	}
 	empty := []int{}
 	occupiedSafe := []int{}
@@ -435,7 +488,6 @@ func pickMarked(payload Payload) []int {
 	shuffleInts(rng, occupiedSafe)
 	pool := append(empty, occupiedSafe...)
 	if len(pool) == 0 {
-		// Everyone stacked and no spare tile: keep the last island.
 		return []int{}
 	}
 	if count > len(pool) {
@@ -569,21 +621,31 @@ func presentCells(payload Payload) []int {
 	return out
 }
 
-func adjacent(a, b int) bool {
-	if a == b || a < 0 || b < 0 || a >= platformCount || b >= platformCount {
-		return false
+func cellCenter(index int) Vec {
+	col := index % gridSize
+	row := index / gridSize
+	return Vec{
+		X: float64(col-1) * spacing,
+		Y: restY,
+		Z: float64(row-1) * spacing,
 	}
-	ar, ac := a/gridSize, a%gridSize
-	br, bc := b/gridSize, b%gridSize
-	dr := ar - br
-	if dr < 0 {
-		dr = -dr
+}
+
+func cellAt(x, z float64, present []bool) int {
+	best := -1
+	bestDist := landRadius
+	for i := 0; i < platformCount; i++ {
+		if i >= len(present) || !present[i] {
+			continue
+		}
+		c := cellCenter(i)
+		d := math.Hypot(x-c.X, z-c.Z)
+		if d < bestDist {
+			bestDist = d
+			best = i
+		}
 	}
-	dc := ac - bc
-	if dc < 0 {
-		dc = -dc
-	}
-	return dr <= 1 && dc <= 1
+	return best
 }
 
 func fullBoard() []bool {
@@ -612,8 +674,11 @@ func asPayload(value any) (Payload, error) {
 	if payload.Eliminated == nil {
 		payload.Eliminated = []string{}
 	}
-	if payload.Positions == nil {
-		payload.Positions = map[string]int{}
+	if payload.Cells == nil {
+		payload.Cells = map[string]int{}
+	}
+	if payload.Figures == nil {
+		payload.Figures = map[string]Vec{}
 	}
 	if payload.Moved == nil {
 		payload.Moved = []string{}
@@ -623,7 +688,7 @@ func asPayload(value any) (Payload, error) {
 	}
 	payload.Present = normalizePresent(payload.Present)
 	if payload.Status == "" {
-		payload.Status = statusMove
+		payload.Status = statusAim
 	}
 	return payload, nil
 }
@@ -647,16 +712,50 @@ func playerCap(settings json.RawMessage) int {
 	return MaxPlayers
 }
 
-func contains(ids []string, value string) bool {
-	for _, id := range ids {
-		if id == value {
-			return true
-		}
+func readAngle(value float64) (float64, error) {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0, text.Error(BadAim)
 	}
-	return false
+	return value, nil
 }
 
-func containsInt(ids []int, value int) bool {
+func readPower(value float64) (float64, error) {
+	if math.IsNaN(value) || math.IsInf(value, 0) {
+		return 0, text.Error(BadPower)
+	}
+	if value < 0.02 {
+		return 0.02, nil
+	}
+	if value > 1 {
+		return 1, nil
+	}
+	return value, nil
+}
+
+func readCoord(value float64) (float64, error) {
+	if math.IsNaN(value) || math.IsInf(value, 0) || math.Abs(value) > 40 {
+		return 0, text.Error(BadFigurePos)
+	}
+	return math.Round(value*1000) / 1000, nil
+}
+
+func readVec(x, y, z float64) (float64, float64, float64, error) {
+	nx, err := readCoord(x)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	ny, err := readCoord(y)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	nz, err := readCoord(z)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	return nx, ny, nz, nil
+}
+
+func contains(ids []string, value string) bool {
 	for _, id := range ids {
 		if id == value {
 			return true

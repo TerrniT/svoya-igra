@@ -1,7 +1,17 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { createHostRoom, joinRoom } from './room'
 
-test('двое ходят, платформы помечаются и исчезают', async ({ page, context }) => {
+async function push(page: Page) {
+  await page.evaluate(() => {
+    const active = document.activeElement
+    if (active instanceof HTMLElement)
+      active.blur()
+  })
+  await page.keyboard.press('Space')
+}
+
+test('двое толкают фигуры, платформы помечаются и исчезают', async ({ page, context }) => {
+  test.setTimeout(60_000)
   const guest = await context.newPage()
 
   const code = await createHostRoom(page, 'platforms', 'Лео')
@@ -12,19 +22,13 @@ test('двое ходят, платформы помечаются и исчез
   await page.getByRole('button', { name: 'Начать игру' }).click()
   await expect(page.getByRole('heading', { name: 'Платформы' })).toBeVisible()
   await expect(guest.getByRole('heading', { name: 'Платформы' })).toBeVisible()
-  await expect(page.getByText('Толкните фигуру на соседнюю платформу')).toBeVisible()
+  await expect(page.locator('canvas[aria-label="Девять платформ в пропасти"]')).toBeVisible()
+  await expect(page.getByText('Ваш толчок')).toBeVisible()
 
-  const hostTargets = page.locator('.platform.target')
-  await expect(hostTargets.first()).toBeVisible()
-  await hostTargets.first().click()
+  await push(page)
+  await expect(guest.getByText('Ваш толчок')).toBeVisible({ timeout: 20_000 })
+  await push(guest)
 
-  await expect(guest.getByText('Толкните фигуру на соседнюю платформу')).toBeVisible()
-  const guestTargets = guest.locator('.platform.target')
-  await expect(guestTargets.first()).toBeVisible()
-  await guestTargets.first().click()
-
-  await expect(page.getByText(/Платформа уходит|Уходят 2 платформы/)).toBeVisible()
-  await expect(page.locator('.platform.marked')).toHaveCount(2)
-  await expect(page.locator('.platform.gone')).toHaveCount(2, { timeout: 8000 })
-  await expect(page.getByText(/Круг 2/)).toBeVisible()
+  await expect(page.getByText(/Платформа уходит|Уходят 2 платформы/)).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText(/Круг 2/)).toBeVisible({ timeout: 8000 })
 })
