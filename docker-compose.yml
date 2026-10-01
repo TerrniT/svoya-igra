@@ -1,3 +1,5 @@
+# Local / LAN. Production (VDS + TLS): docker compose -f docker-compose.prod.yml up -d --build
+
 services:
   backend:
     build:

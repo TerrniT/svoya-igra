@@ -1,0 +1,60 @@
+# Production (VDS): Caddy on 80/443, frontend/backend on an internal network.
+# cp docker-compose.env.example docker-compose.env && docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    build:
+      context: ./backend
+    expose:
+      - "8080"
+    env_file:
+      - docker-compose.env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/health >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+    expose:
+      - "80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internal
+
+  caddy:
+    build:
+      context: ./caddy
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file:
+      - docker-compose.env
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - internal
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:

@@ -22,6 +22,7 @@ frontend/playwright-report
 .env
 .env.*
 !.env.example
+docker-compose.env
 
 # Editor directories and files
 .vscode/*

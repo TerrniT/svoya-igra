@@ -1,4 +1,4 @@
-# AGENTS.md
+# [AGENTS.md](http://AGENTS.md)
 
 Монорепозиторий партийных игр: фронт в `frontend/`, комнаты в `backend/`. Игровой reducer живёт на сервере. Новую игру добавляют модулем, не правя хаб.
 
@@ -11,8 +11,8 @@ cp -n .env.example .env
 docker compose up --build
 ```
 
-- UI: http://localhost (`FRONTEND_PORT`, по умолчанию 80)
-- бэкенд: http://localhost:8080 (`BACKEND_PORT`)
+- UI: [http://localhost](http://localhost) (`FRONTEND_PORT`, по умолчанию 80)
+- бэкенд: [http://localhost:8080](http://localhost:8080) (`BACKEND_PORT`)
 - WebSocket: тот же origin, что и UI (`/ws` проксируется nginx → backend)
 
 На телефоне открывайте LAN-адрес машины (не `localhost`). QR берёт origin из `GET /api/join-info`. Если фронт открыт с localhost, сервер подставляет IPv4 LAN. Явный список:
@@ -25,19 +25,40 @@ JOIN_ORIGINS=http://192.168.1.10
 
 ### Переменные backend (`.env`)
 
-| Переменная | По умолчанию | Смысл |
-|---|---|---|
-| `HOST` | `0.0.0.0` | адрес listen |
-| `PORT` | `8080` | порт listen внутри контейнера |
-| `WS_PATH` | `/ws` | путь WebSocket |
-| `CORS_ORIGINS` | `*` | Origin для WS; `*` или список через запятую |
-| `JOIN_ORIGINS` | пусто | origins для QR; пусто — из Host / LAN |
-| `MAX_MESSAGE_BYTES` | `1048576` | лимит кадра WS |
-| `READ_TIMEOUT` | `60s` | read deadline |
-| `WRITE_TIMEOUT` | `8s` | write deadline |
-| `PING_INTERVAL` | `20s` | ping |
+
+| Переменная          | По умолчанию | Смысл                                       |
+| ------------------- | ------------ | ------------------------------------------- |
+| `HOST`              | `0.0.0.0`    | адрес listen                                |
+| `PORT`              | `8080`       | порт listen внутри контейнера               |
+| `WS_PATH`           | `/ws`        | путь WebSocket                              |
+| `CORS_ORIGINS`      | `*`          | Origin для WS; `*` или список через запятую |
+| `JOIN_ORIGINS`      | пусто        | origins для QR; пусто — из Host / LAN       |
+| `MAX_MESSAGE_BYTES` | `1048576`    | лимит кадра WS                              |
+| `READ_TIMEOUT`      | `60s`        | read deadline                               |
+| `WRITE_TIMEOUT`     | `8s`         | write deadline                              |
+| `PING_INTERVAL`     | `20s`        | ping                                        |
+
 
 Проброс портов на хост: `FRONTEND_PORT`, `BACKEND_PORT`.
+
+## Продакшен (VDS + Caddy)
+
+На сервере Caddy слушает 80/443, фронт и бэкенд остаются во внутренней docker-сети. TLS — Let's Encrypt.
+
+```bash
+cp -n docker-compose.env.example docker-compose.env
+# в docker-compose.env: EMAIL, при необходимости DOMAIN
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- сайт: `DOMAIN`
+- `www.${DOMAIN}.ru` редиректит на apex
+- `/ws` и `/api` проксирует Caddy → backend, остальное → frontend
+- сертификаты в volume `caddy_data`
+
+DNS: A (и при желании AAAA) для `DOMAIN` и `www.${DOMAIN}.ru` на IP VDS. Порты 80 и 443 должны быть открыты.
+
+Другой хост — только `DOMAIN` / `CORS_ORIGINS` / `JOIN_ORIGINS` в `docker-compose.env`. Локальный стек (`docker compose up`) не меняется.
 
 ### Локально без Docker
 
