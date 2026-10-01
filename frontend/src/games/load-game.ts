@@ -4,6 +4,7 @@ import { quizDriver } from './quiz/driver'
 import { golfDriver } from './golf/driver'
 import { whoamiDriver } from './whoami/driver'
 import { deepQuestionDriver } from './deep-question/driver'
+import { platformsDriver } from './platforms/driver'
 
 const cache = new Map<GameId, Promise<GameModule>>()
 
@@ -17,6 +18,8 @@ export function resolveDriver(gameId: GameId): GameDriver {
     return golfDriver
   if (gameId === 'deep-question')
     return deepQuestionDriver
+  if (gameId === 'platforms')
+    return platformsDriver
   throw new Error(`Неизвестная игра: ${gameId}`)
 }
 

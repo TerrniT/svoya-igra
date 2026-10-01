@@ -74,6 +74,18 @@ const router = createRouter({
       component: () => import('@/games/deep-question/pages/PlayPage.vue'),
       meta: { gameId: 'deep-question', localOnly: true },
     },
+    {
+      path: '/platforms',
+      name: 'platforms-play',
+      component: () => import('@/games/platforms/pages/PlayPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'platforms' },
+    },
+    {
+      path: '/platforms/results',
+      name: 'platforms-results',
+      component: () => import('@/games/platforms/pages/ResultsPage.vue'),
+      meta: { requiresPlayers: true, gameId: 'platforms' },
+    },
   ],
   scrollBehavior() {
     return { top: 0 }

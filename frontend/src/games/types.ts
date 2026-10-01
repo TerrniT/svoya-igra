@@ -3,7 +3,7 @@ import type { RouteLocationNormalizedLoaded, Router, RouteRecordRaw } from 'vue-
 import type { ThemeId } from '@/themes/catalog'
 import type { RoomPlayer, RoomSession, ServerNotice } from '@/lib/room-protocol'
 
-export type GameId = 'quiz' | 'whoami' | 'golf' | 'deep-question'
+export type GameId = 'quiz' | 'whoami' | 'golf' | 'deep-question' | 'platforms'
 
 export interface GameMeta {
   id: GameId

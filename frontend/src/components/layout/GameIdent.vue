@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watchEffect } from 'vue'
 import { RouterLink } from 'vue-router'
-import { FlagIcon, LayoutGridIcon, MessageCircleHeartIcon, PawPrintIcon, ScanFaceIcon } from '@lucide/vue'
+import { FlagIcon, LayersIcon, LayoutGridIcon, MessageCircleHeartIcon, PawPrintIcon, ScanFaceIcon } from '@lucide/vue'
 import { useActiveGame } from '@/composables/useActiveGame'
 import { usePlayState } from '@/composables/usePlayState'
 import { getGameMeta } from '@/games/catalog'
@@ -44,6 +44,8 @@ function markIcon(id: GameId | 'hub') {
     return FlagIcon
   if (id === 'deep-question')
     return MessageCircleHeartIcon
+  if (id === 'platforms')
+    return LayersIcon
   return PawPrintIcon
 }
 </script>

@@ -8,7 +8,7 @@ import (
 
 func TestCatalogResolvesKnownGames(t *testing.T) {
 	catalog := games.NewCatalog()
-	for _, id := range []string{"quiz", "whoami", "golf", "deep-question"} {
+	for _, id := range []string{"quiz", "whoami", "golf", "deep-question", "platforms"} {
 		mod, err := catalog.Resolve(id)
 		if err != nil {
 			t.Fatalf("%s: %v", id, err)

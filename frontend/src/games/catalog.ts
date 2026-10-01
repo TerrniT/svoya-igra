@@ -49,6 +49,18 @@ export const GAME_CATALOG: GameMeta[] = [
     defaultThemeId: 'deep',
     load: () => import('./deep-question').then(mod => mod.default ?? mod.deepQuestionModule),
   },
+  {
+    id: 'platforms',
+    name: 'Платформы',
+    description: 'Девять платформ. Толкните фигуру на соседнюю — потом пол уходит. Кто остался, тот и выиграл.',
+    minPlayers: 2,
+    hostPlays: true,
+    supportsLocal: false,
+    roomEnabled: true,
+    themeIds: ['rift', 'studio'],
+    defaultThemeId: 'rift',
+    load: () => import('./platforms').then(mod => mod.default ?? mod.platformsModule),
+  },
 ]
 
 export function getGameMeta(id: string): GameMeta | undefined {

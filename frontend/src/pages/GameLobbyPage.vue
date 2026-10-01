@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
-import { DoorOpenIcon, FlagIcon, LockIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
+import { DoorOpenIcon, FlagIcon, LayersIcon, LockIcon, PawPrintIcon, PlusIcon, QrCodeIcon, Trash2Icon, UserRoundIcon } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import FirstChooserDialog from '@/games/quiz/components/FirstChooserDialog.vue'
 import RoomInvite from '@/components/room/RoomInvite.vue'
@@ -109,6 +109,8 @@ const canStartRoom = computed(() => {
     return players.value.length >= 2
   if (gameMeta.value.id === 'golf')
     return players.value.length >= 1 && players.value.length <= 8
+  if (gameMeta.value.id === 'platforms')
+    return players.value.length >= 2 && players.value.length <= 9
   if (gameMeta.value.id === 'deep-question')
     return players.value.length >= 1
   return false
@@ -161,11 +163,13 @@ function beginRoom() {
       ? 'Нужно минимум двое'
       : gameMeta.value?.id === 'golf'
         ? 'На поле от 1 до 8 игроков'
-        : 'Нужны игроки и вопросы'
+        : gameMeta.value?.id === 'platforms'
+          ? 'Нужно от 2 до 9 игроков'
+          : 'Нужны игроки и вопросы'
     toast.error(hint)
     return
   }
-  if (gameMeta.value?.id === 'whoami' || gameMeta.value?.id === 'golf' || gameMeta.value?.id === 'deep-question') {
+  if (gameMeta.value?.id === 'whoami' || gameMeta.value?.id === 'golf' || gameMeta.value?.id === 'platforms' || gameMeta.value?.id === 'deep-question') {
     room.start()
     return
   }
@@ -284,6 +288,7 @@ const inThisGameRoom = computed(() =>
               </Button>
               <Button size="lg" class="w-full sm:w-auto" :disabled="!canStartRoom" @click="beginRoom">
                 <FlagIcon v-if="gameMeta.id === 'golf'" data-icon="inline-start" />
+                <LayersIcon v-else-if="gameMeta.id === 'platforms'" data-icon="inline-start" />
                 <PawPrintIcon v-else data-icon="inline-start" />
                 Начать игру
               </Button>
